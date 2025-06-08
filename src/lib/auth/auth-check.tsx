@@ -30,5 +30,9 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
     return <Redirect href="/profile-setup-3" />;
   }
 
+  if (authState.authData?.driverStatus && authState.authData?.driverStatusSuccessConfirmed != 'confirmed') {
+    return <Redirect href="/profile-setup-4" />;
+  }
+
   return children;
 }

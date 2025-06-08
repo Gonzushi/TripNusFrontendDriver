@@ -1,3 +1,16 @@
+// Generate years from 2010 to current year
+const currentYear = new Date().getFullYear();
+export const VEHICLE_YEARS = Array.from(
+  { length: currentYear - 2010 + 1 },
+  (_, i) => String(currentYear - i)
+) as readonly string[];
+
+export const VEHICLE_TYPES = ['Mobil', 'Sepeda Motor'] as const;
+export const DRIVER_LICENSE_CLASSES = ['A', 'C'] as const;
+export const GENDER_OPTIONS = ['Laki-laki', 'Perempuan'] as const;
+
+// Vehicle brands and colors
+
 export const VEHICLE_COLORS = [
   'Hitam',
   'Putih',

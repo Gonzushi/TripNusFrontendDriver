@@ -1,438 +1,46 @@
-import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useContext, useState } from 'react';
-import {
-  Alert,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 
-import { VEHICLE_BRANDS, VEHICLE_COLORS } from '@/constants/profile-setup';
 import { AuthContext } from '@/lib/auth';
 import { updateDriverProfileApi, uploadDriverPhotoApi } from '@/lib/driver/api';
+import { type PhotoType } from '@/lib/driver/types';
 import {
-  type PhotoType,
-  type UpdateDriverProfileData,
-} from '@/lib/driver/types';
-
-// Constants
-const DEBUG_MODE = true;
-
-// Generate years from 2010 to current year
-const currentYear = new Date().getFullYear();
-const VEHICLE_YEARS = Array.from({ length: currentYear - 2010 + 1 }, (_, i) =>
-  String(currentYear - i)
-) as readonly string[];
-
-const VEHICLE_TYPES = ['Mobil', 'Sepeda Motor'] as const;
-const DRIVER_LICENSE_CLASSES = ['A', 'C'] as const;
-const GENDER_OPTIONS = ['Laki-laki', 'Perempuan'] as const;
-
-// Logo component
-function Logo() {
-  return (
-    <View className="mt-6 items-center">
-      <View className="flex-row items-center">
-        <View className="mr-2 h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-          <Ionicons name="car" size={30} color="white" />
-        </View>
-        <Text className="text-2xl font-bold text-blue-600">TripNus</Text>
-      </View>
-    </View>
-  );
-}
-
-// Header component
-function Header() {
-  return (
-    <View className="mb-8 mt-8 items-center">
-      <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-        <Ionicons name="document-text" size={32} color="#2563EB" />
-      </View>
-      <Text className="mb-2 text-2xl font-bold text-gray-900">
-        Informasi Driver
-      </Text>
-      <Text className="text-center text-base text-gray-600">
-        Lengkapi informasi dan dokumen Anda untuk menjadi mitra driver TripNus
-      </Text>
-    </View>
-  );
-}
-
-// Section Header component
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <View className="mb-4 mt-6">
-      <Text className="text-lg font-semibold text-gray-900">{title}</Text>
-      <View className="mt-2 h-0.5 bg-gray-100" />
-    </View>
-  );
-}
-
-// Form input component
-function FormInput({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  isRequired = true,
-  isLoading = false,
-  keyboardType = 'default',
-  maxLength,
-  error,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder: string;
-  isRequired?: boolean;
-  isLoading?: boolean;
-  keyboardType?: 'default' | 'numeric';
-  maxLength?: number;
-  error?: string;
-}) {
-  return (
-    <View className="mb-4">
-      <Text className="mb-1.5 text-sm text-gray-700">
-        {label} {isRequired && '*'}
-      </Text>
-      <View
-        className={`rounded-xl border ${error ? 'border-red-500' : 'border-gray-200'} bg-gray-50`}
-      >
-        <TextInput
-          className="px-4 py-3"
-          placeholder={placeholder}
-          value={value}
-          onChangeText={onChangeText}
-          keyboardType={keyboardType}
-          editable={!isLoading}
-          maxLength={maxLength}
-          placeholderTextColor="#9CA3AF"
-        />
-      </View>
-      {error && <Text className="mt-1 text-sm text-red-500">{error}</Text>}
-    </View>
-  );
-}
-
-// Modal Picker component
-function ModalPicker({
-  visible,
-  onClose,
-  onSelect,
-  options,
-  value,
-  title,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onSelect: (value: string) => void;
-  options: readonly string[];
-  value: string;
-  title: string;
-}) {
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View className="flex-1 bg-black/50">
-        <View className="mt-auto h-3/4 rounded-t-3xl bg-white p-6">
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-xl font-bold text-gray-900">{title}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#666" />
-            </TouchableOpacity>
-          </View>
-          <ScrollView className="flex-1">
-            {options.map((option) => (
-              <TouchableOpacity
-                key={option}
-                onPress={() => {
-                  onSelect(option);
-                  onClose();
-                }}
-                className={`border-b border-gray-100 py-4 ${
-                  value === option ? 'bg-blue-50' : ''
-                }`}
-              >
-                <Text
-                  className={`text-base ${
-                    value === option ? 'text-blue-600' : 'text-gray-700'
-                  }`}
-                >
-                  {option}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-// Selection Input component
-function SelectionInput({
-  label,
-  value,
-  onSelect,
-  options,
-  isRequired = true,
-  error,
-  useModal = false,
-}: {
-  label: string;
-  value: string;
-  onSelect: (value: string) => void;
-  options: readonly string[];
-  isRequired?: boolean;
-  error?: string;
-  useModal?: boolean;
-}) {
-  const [modalVisible, setModalVisible] = useState(false);
-
-  if (useModal) {
-    return (
-      <View className="mb-4">
-        <Text className="mb-1.5 text-sm text-gray-700">
-          {label} {isRequired && '*'}
-        </Text>
-        <TouchableOpacity
-          onPress={() => setModalVisible(true)}
-          className={`rounded-xl border px-4 py-3 ${
-            error ? 'border-red-500' : 'border-gray-200'
-          } bg-gray-50`}
-        >
-          <View className="flex-row items-center justify-between">
-            <Text className={value ? 'text-gray-900' : 'text-gray-500'}>
-              {value || `Pilih ${label}`}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#666" />
-          </View>
-        </TouchableOpacity>
-        {error && <Text className="mt-1 text-sm text-red-500">{error}</Text>}
-        <ModalPicker
-          visible={modalVisible}
-          onClose={() => setModalVisible(false)}
-          onSelect={onSelect}
-          options={options}
-          value={value}
-          title={`Pilih ${label}`}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <View className="mb-4">
-      <Text className="mb-1.5 text-sm text-gray-700">
-        {label} {isRequired && '*'}
-      </Text>
-      <View className="flex-row flex-wrap gap-2">
-        {options.map((option) => (
-          <TouchableOpacity
-            key={option}
-            onPress={() => onSelect(option)}
-            className={`rounded-xl border px-4 py-2 ${
-              value === option
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 bg-gray-50'
-            }`}
-          >
-            <Text
-              className={`text-sm ${
-                value === option ? 'text-blue-700' : 'text-gray-700'
-              }`}
-            >
-              {option}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {error && <Text className="mt-1 text-sm text-red-500">{error}</Text>}
-    </View>
-  );
-}
-
-// Date Input component
-function DateInput({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  isRequired = true,
-  error,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder: string;
-  isRequired?: boolean;
-  error?: string;
-}) {
-  const formatDate = (text: string) => {
-    // Remove any non-digit characters
-    const cleaned = text.replace(/\D/g, '');
-
-    // Format as YYYY-MM-DD
-    if (cleaned.length <= 4) {
-      return cleaned;
-    } else if (cleaned.length <= 6) {
-      return `${cleaned.slice(0, 4)}-${cleaned.slice(4)}`;
-    } else {
-      return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 6)}-${cleaned.slice(6, 8)}`;
-    }
-  };
-
-  return (
-    <View className="mb-4">
-      <Text className="mb-1.5 text-sm text-gray-700">
-        {label} {isRequired && '*'}
-      </Text>
-      <View
-        className={`rounded-xl border ${error ? 'border-red-500' : 'border-gray-200'} bg-gray-50`}
-      >
-        <TextInput
-          className="px-4 py-3"
-          placeholder={placeholder}
-          value={value}
-          onChangeText={(text) => onChangeText(formatDate(text))}
-          keyboardType="numeric"
-          maxLength={10}
-          placeholderTextColor="#9CA3AF"
-        />
-      </View>
-      {error && <Text className="mt-1 text-sm text-red-500">{error}</Text>}
-    </View>
-  );
-}
-
-// Document Upload Button component
-function DocumentUploadButton({
-  title,
-  onPress,
-  isUploaded,
-  isLoading,
-}: {
-  title: string;
-  onPress: () => void;
-  isUploaded: boolean;
-  isLoading: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      className={`mb-4 flex-row items-center justify-between rounded-xl border ${
-        isUploaded
-          ? 'border-green-500 bg-green-50'
-          : 'border-gray-200 bg-gray-50'
-      } p-4`}
-      onPress={onPress}
-      disabled={isLoading}
-    >
-      <View className="flex-row items-center">
-        <Ionicons
-          name={isUploaded ? 'checkmark-circle' : 'cloud-upload'}
-          size={24}
-          color={isUploaded ? '#22C55E' : '#6B7280'}
-        />
-        <Text
-          className={`ml-3 ${
-            isUploaded ? 'text-green-700' : 'text-gray-700'
-          } font-medium`}
-        >
-          {title}
-        </Text>
-      </View>
-      {isLoading ? (
-        <Text className="text-sm text-gray-500">Mengupload...</Text>
-      ) : (
-        <Ionicons
-          name={isUploaded ? 'checkmark' : 'arrow-forward'}
-          size={20}
-          color={isUploaded ? '#22C55E' : '#6B7280'}
-        />
-      )}
-    </TouchableOpacity>
-  );
-}
-
-// Submit button component
-function SubmitButton({
-  onPress,
-  isLoading,
-  isValid,
-}: {
-  onPress: () => void;
-  isLoading: boolean;
-  isValid: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      className={`mb-4 flex-row items-center justify-center rounded-xl py-4 ${
-        isLoading ? 'bg-blue-300' : isValid ? 'bg-blue-600' : 'bg-gray-300'
-      }`}
-      onPress={onPress}
-      disabled={isLoading || !isValid}
-    >
-      {isLoading ? (
-        <Text className="text-base font-semibold text-white">
-          Menyimpan Data...
-        </Text>
-      ) : (
-        <>
-          <Ionicons
-            name="arrow-forward"
-            size={20}
-            color="white"
-            style={{ marginRight: 8 }}
-          />
-          <Text className="text-base font-semibold text-white">Lanjutkan</Text>
-        </>
-      )}
-    </TouchableOpacity>
-  );
-}
-
-// Debug Output component
-function DebugOutput({ data }: { data: UpdateDriverProfileData }) {
-  if (!DEBUG_MODE) return null;
-
-  return (
-    <View className="mb-8 rounded-xl border border-gray-200 bg-gray-50 p-4">
-      <Text className="mb-2 font-bold">Debug Output:</Text>
-      <Text className="font-mono">{JSON.stringify(data, null, 2)}</Text>
-    </View>
-  );
-}
-
-// Debug Button component
-function DebugButton({ onPress }: { onPress: () => void }) {
-  if (!DEBUG_MODE) return null;
-
-  return (
-    <TouchableOpacity
-      className="mb-4 rounded-xl bg-gray-800 py-4"
-      onPress={onPress}
-    >
-      <Text className="text-center text-base font-semibold text-white">
-        Debug: Log Form Data
-      </Text>
-    </TouchableOpacity>
-  );
-}
+  DateInput,
+  DebugButton,
+  DebugOutput,
+  DocumentUploadButton,
+  FormInput,
+  Header,
+  Logo,
+  ProfilePictureCamera,
+  SectionHeader,
+  SelectionInput,
+  SubmitButton,
+} from '@/lib/profile-setup/components';
+import {
+  DRIVER_LICENSE_CLASSES,
+  GENDER_OPTIONS,
+  VEHICLE_BRANDS,
+  VEHICLE_COLORS,
+  VEHICLE_TYPES,
+  VEHICLE_YEARS,
+} from '@/lib/profile-setup/constants';
+import {
+  type FormInputData,
+  type UploadedDocsState,
+} from '@/lib/profile-setup/types';
+import {
+  formatFormDataForSubmission,
+  getFileName,
+  validateForm,
+} from '@/lib/profile-setup/utils';
 
 export default function ProfileSetup3() {
-  const initialFormData: UpdateDriverProfileData = {
+  const initialFormData: FormInputData = {
     address_line1: '',
-    address_line2: undefined,
+    address_line2: '',
     city: '',
     date_of_birth: '',
     sex: '',
@@ -450,13 +58,11 @@ export default function ProfileSetup3() {
     vehicle_year: '',
   };
 
-  const [formData, setFormData] =
-    useState<UpdateDriverProfileData>(initialFormData);
+  const [formData, setFormData] = useState<FormInputData>(initialFormData);
   const [formErrors, setFormErrors] = useState<
-    Partial<Record<keyof UpdateDriverProfileData, string>>
+    ReturnType<typeof validateForm>['errors']
   >({});
-
-  const [uploadedDocs, setUploadedDocs] = useState({
+  const [uploadedDocs, setUploadedDocs] = useState<UploadedDocsState>({
     ktp: false,
     license: false,
     stnk: false,
@@ -465,8 +71,10 @@ export default function ProfileSetup3() {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState<PhotoType | null>(null);
   const [showDebugOutput, setShowDebugOutput] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [profilePictureUploaded, setProfilePictureUploaded] = useState(false);
 
-  const { authData } = useContext(AuthContext);
+  const { authData, setAuthData } = useContext(AuthContext);
   const router = useRouter();
 
   const isFormValid = () => {
@@ -476,7 +84,9 @@ export default function ProfileSetup3() {
     const allFieldsFilled = requiredFields.every(
       ([, value]) => value && value.trim() !== ''
     );
-    const allDocsUploaded = Object.values(uploadedDocs).every((value) => value);
+    const allDocsUploaded =
+      Object.values(uploadedDocs).every((value) => value) &&
+      profilePictureUploaded;
     return allFieldsFilled && allDocsUploaded;
   };
 
@@ -492,46 +102,57 @@ export default function ProfileSetup3() {
         );
         return;
       }
+
       console.log('launching image picker');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: 'images',
         allowsEditing: true,
-        quality: 0.8,
+        quality: 0.7, // Compress to 50% quality
         base64: false,
         exif: false,
         aspect: [4, 3],
       });
-      console.log(result);
 
       if (!result.canceled && result.assets[0]) {
         setUploadingDoc(type);
 
-        // Create a blob from the image URI
-        const response = await fetch(result.assets[0].uri);
-        const blob = await response.blob();
+        try {
+          // Create FormData
+          const formData = new FormData();
+          const fileName = getFileName(type);
 
-        console.log('blob', blob);
+          // @ts-expect-error React Native's FormData accepts File-like objects
+          formData.append('file', {
+            uri: result.assets[0].uri,
+            type: 'image/jpeg',
+            name: fileName,
+          });
+          formData.append('photoType', type);
 
-        const uploadResponse = await uploadDriverPhotoApi(
-          authData!.session.access_token,
-          blob,
-          type
-        );
-
-        console.log(uploadResponse);
-
-        if (uploadResponse.status === 200) {
-          setUploadedDocs((prev) => ({ ...prev, [type]: true }));
-          Alert.alert('Sukses', 'Dokumen berhasil diupload');
-        } else {
-          Alert.alert(
-            'Error',
-            uploadResponse.message ||
-              'Gagal mengupload dokumen. Silakan coba lagi.'
+          const uploadResponse = await uploadDriverPhotoApi(
+            authData!.session.access_token,
+            formData
           );
+
+          console.log('upload response:', uploadResponse);
+
+          if (uploadResponse.status === 200) {
+            setUploadedDocs((prev) => ({ ...prev, [type]: true }));
+            Alert.alert('Sukses', 'Dokumen berhasil diupload');
+          } else {
+            Alert.alert(
+              'Error',
+              uploadResponse.message ||
+                'Gagal mengupload dokumen. Silakan coba lagi.'
+            );
+          }
+        } catch (error) {
+          console.error('Error processing image:', error);
+          Alert.alert('Error', 'Gagal memproses gambar. Silakan coba lagi.');
         }
       }
-    } catch {
+    } catch (error) {
+      console.error('Error uploading document:', error);
       Alert.alert(
         'Error',
         'Terjadi kesalahan saat mengupload dokumen. Silakan coba lagi.'
@@ -541,87 +162,82 @@ export default function ProfileSetup3() {
     }
   };
 
-  const validateForm = () => {
-    const errors: Partial<Record<keyof UpdateDriverProfileData, string>> = {};
+  const handleProfilePictureCapture = async (uri: string) => {
+    setShowCamera(false);
+    setUploadingDoc('profile');
 
-    // KTP validation (16 digits)
-    if (!/^\d{16}$/.test(formData.ktp_id || '')) {
-      errors.ktp_id = 'Nomor KTP harus 16 digit angka';
+    try {
+      // Create FormData
+      const formData = new FormData();
+      const fileName = getFileName('profile');
+
+      // @ts-expect-error React Native's FormData accepts File-like objects
+      formData.append('file', {
+        uri,
+        type: 'image/jpeg',
+        name: fileName,
+      });
+      formData.append('photoType', 'profile');
+
+      const uploadResponse = await uploadDriverPhotoApi(
+        authData!.session.access_token,
+        formData
+      );
+
+      if (uploadResponse.status === 200) {
+        setProfilePictureUploaded(true);
+        Alert.alert('Sukses', 'Foto profil berhasil diupload');
+      } else {
+        Alert.alert(
+          'Error',
+          uploadResponse.message || 'Gagal mengupload foto. Silakan coba lagi.'
+        );
+      }
+    } catch (err) {
+      console.error('Error uploading profile picture:', err);
+      Alert.alert('Error', 'Gagal mengupload foto. Silakan coba lagi.');
+    } finally {
+      setUploadingDoc(null);
     }
-
-    // Postal code validation (5 digits)
-    if (!/^\d{5}$/.test(formData.postal_code || '')) {
-      errors.postal_code = 'Kode pos harus 5 digit angka';
-    }
-
-    // Date validations
-    const dateRegex = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
-
-    if (!dateRegex.test(formData.date_of_birth || '')) {
-      errors.date_of_birth = 'Format tanggal tidak valid (YYYY-MM-DD)';
-    }
-
-    if (!dateRegex.test(formData.driver_license_expiration || '')) {
-      errors.driver_license_expiration =
-        'Format tanggal tidak valid (YYYY-MM-DD)';
-    }
-
-    // Required field validations
-    if (!formData.sex) {
-      errors.sex = 'Pilih jenis kelamin';
-    }
-
-    if (!formData.driver_license_class) {
-      errors.driver_license_class = 'Pilih kelas SIM';
-    }
-
-    if (!formData.vehicle_type) {
-      errors.vehicle_type = 'Pilih tipe kendaraan';
-    }
-
-    if (!formData.vehicle_color) {
-      errors.vehicle_color = 'Pilih warna kendaraan';
-    }
-
-    if (!formData.vehicle_brand) {
-      errors.vehicle_brand = 'Pilih merek kendaraan';
-    }
-
-    if (!formData.vehicle_year) {
-      errors.vehicle_year = 'Pilih tahun kendaraan';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
   };
 
-  const formatFormDataForSubmission = (
-    data: UpdateDriverProfileData
-  ): UpdateDriverProfileData => {
-    const formatted = { ...data };
-
-    // Trim all string values and convert empty strings to undefined
-    Object.keys(formatted).forEach((key) => {
-      const value = formatted[key as keyof UpdateDriverProfileData];
-      if (typeof value === 'string') {
-        const trimmed = value.trim();
-        formatted[key as keyof UpdateDriverProfileData] = trimmed || undefined;
-      }
-    });
-
-    // Special handling for vehicle plate number - remove all spaces
-    if (formatted.vehicle_plate_number) {
-      formatted.vehicle_plate_number = formatted.vehicle_plate_number.replace(
-        /\s+/g,
-        ''
-      );
+  const handleFormChange = (field: keyof FormInputData, value: string) => {
+    if (field === 'driver_license_number') {
+      // Only allow digits and limit to 12 characters
+      const numbersOnly = value.replace(/\D/g, '').slice(0, 12);
+      setFormData((prev) => ({
+        ...prev,
+        [field]: numbersOnly,
+      }));
+    } else if (field === 'vehicle_plate_number') {
+      // Convert to uppercase for plate number
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value.toUpperCase(),
+      }));
+    } else if (field === 'vehicle_registration_no') {
+      // Convert to uppercase and remove invalid characters for VIN
+      // VIN can only contain numbers and letters (except I, O, Q)
+      const validVinChars = value
+        .toUpperCase()
+        .replace(/[^A-HJ-NPR-Z0-9]/g, '')
+        .slice(0, 17);
+      setFormData((prev) => ({
+        ...prev,
+        [field]: validVinChars,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
     }
-
-    return formatted;
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) {
+    const validation = validateForm(formData);
+    if (!validation.isValid) {
+      setFormErrors(validation.errors);
       Alert.alert(
         'Error',
         'Mohon lengkapi semua data yang diperlukan dengan benar'
@@ -636,11 +252,19 @@ export default function ProfileSetup3() {
 
       const response = await updateDriverProfileApi(
         authData!.session.access_token,
-        formattedData
+        {
+          ...formattedData,
+          status: 'submitted',
+        }
       );
 
       if (response.status === 200) {
-        router.replace('/(profile-setup)/profile-setup-4' as never);
+        await setAuthData({
+          ...authData!,
+          driverStatus: 'submitted',
+        });
+
+        router.replace('/profile-setup-4');
       } else {
         Alert.alert('Error', 'Gagal menyimpan data. Silakan coba lagi.');
       }
@@ -649,16 +273,6 @@ export default function ProfileSetup3() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleFormChange = (
-    field: keyof UpdateDriverProfileData,
-    value: string
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: field === 'address_line2' ? value || undefined : value,
-    }));
   };
 
   const handleDebugPress = () => {
@@ -672,6 +286,15 @@ export default function ProfileSetup3() {
         <Logo />
         <View className="px-6">
           <Header />
+
+          {/* Profile Picture Section */}
+          <SectionHeader title="Foto Profil" />
+          <DocumentUploadButton
+            title="Ambil Foto Profil"
+            onPress={() => setShowCamera(true)}
+            isUploaded={profilePictureUploaded}
+            isLoading={uploadingDoc === 'profile'}
+          />
 
           {/* Personal Information Section */}
           <SectionHeader title="Informasi Pribadi" />
@@ -729,14 +352,6 @@ export default function ProfileSetup3() {
 
           {/* Driver License Section */}
           <SectionHeader title="Informasi SIM" />
-          <FormInput
-            label="Nomor SIM"
-            value={formData.driver_license_number || ''}
-            onChangeText={(text) =>
-              handleFormChange('driver_license_number', text)
-            }
-            placeholder="Masukkan nomor SIM"
-          />
           <SelectionInput
             label="Kelas SIM"
             value={formData.driver_license_class || ''}
@@ -745,6 +360,17 @@ export default function ProfileSetup3() {
             }
             options={DRIVER_LICENSE_CLASSES}
             error={formErrors.driver_license_class}
+          />
+          <FormInput
+            label="Nomor SIM"
+            value={formData.driver_license_number || ''}
+            onChangeText={(text) =>
+              handleFormChange('driver_license_number', text)
+            }
+            placeholder="Masukkan nomor SIM (12 digit)"
+            keyboardType="numeric"
+            maxLength={12}
+            error={formErrors.driver_license_number}
           />
           <DateInput
             label="Tanggal Kadaluarsa SIM"
@@ -807,7 +433,9 @@ export default function ProfileSetup3() {
             onChangeText={(text) =>
               handleFormChange('vehicle_registration_no', text)
             }
-            placeholder="Masukkan nomor registrasi"
+            placeholder="Masukkan nomor VIN (17 karakter)"
+            maxLength={17}
+            error={formErrors.vehicle_registration_no}
           />
 
           {/* Document Upload Section */}
@@ -847,6 +475,13 @@ export default function ProfileSetup3() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Camera Modal */}
+      <ProfilePictureCamera
+        visible={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={handleProfilePictureCapture}
+      />
     </View>
   );
 }

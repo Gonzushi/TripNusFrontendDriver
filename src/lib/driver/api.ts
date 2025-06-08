@@ -2,7 +2,6 @@ import Env from '@/lib/env';
 
 import {
   type CreateRiderResponse,
-  type PhotoType,
   type UpdateDriverProfileData,
   type UpdateDriverProfileResponse,
   type UpdateFcmTokenResponse,
@@ -71,13 +70,8 @@ export const createDriverProfileApi = async (
 
 export const uploadDriverPhotoApi = async (
   accessToken: string,
-  file: Blob,
-  photoType: PhotoType
+  formData: FormData
 ): Promise<UploadPhotoResponse> => {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('photoType', photoType);
-
   const response = await fetch(`${API_BASE_URL}/driver/picture`, {
     method: 'PATCH',
     headers: {

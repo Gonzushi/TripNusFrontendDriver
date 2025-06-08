@@ -94,6 +94,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'TripNus memerlukan akses ke kamera Anda untuk mengambil foto dokumen seperti Foto Profil, KTP, SIM, dan STNK.',
       },
     ],
+    [
+      'expo-camera',
+      {
+        cameraPermission: 'Izinkan TripNus untuk mengakses kamera Anda',
+        microphonePermission: 'Izinkan TripNusuntuk mengakses mikrofon Anda',
+        recordAudioAndroid: true,
+      },
+    ],
   ],
   experiments: { typedRoutes: true },
   extra: { ...ClientEnv, eas: { projectId: Env.EAS_PROJECT_ID } },

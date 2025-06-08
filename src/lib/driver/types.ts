@@ -33,6 +33,20 @@ export type CreateRiderResponse = {
 
 export type PhotoType = 'profile' | 'ktp' | 'license' | 'stnk';
 
+export type RegistrationStatus =
+  | 'draft'
+  | 'submitted'
+  | 'pending_review'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled'
+  | 'expired'
+  | 'completed'
+  | 'on_hold'
+  | 'needs_info'
+  | 'duplicate';
+
 export type UploadPhotoResponse = {
   status: number;
   message?: string;
@@ -51,11 +65,11 @@ export type UploadPhotoResponse = {
 export type UpdateDriverProfileData = {
   first_name?: string;
   last_name?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
   date_of_birth?: string;
   sex?: string;
-  address_line1?: string;
-  address_line2?: string | undefined;
-  city?: string;
   driver_license_class?: string;
   driver_license_number?: string;
   driver_license_expiration?: string;
@@ -68,7 +82,9 @@ export type UpdateDriverProfileData = {
   vehicle_plate_number?: string;
   vehicle_registration_no?: string;
   vehicle_year?: string;
-  driver_status?: string;
+  status?: RegistrationStatus | string;
+  status_success_confirmed?: string;
+  notes?: string;
 };
 
 export type UpdateDriverProfileResponse = {

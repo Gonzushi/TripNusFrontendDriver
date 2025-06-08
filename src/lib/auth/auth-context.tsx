@@ -41,6 +41,7 @@ export const AuthContext = createContext<AuthContextType>({
   changePassword: async () => {},
   logIn: async () => {},
   logOut: async () => {},
+  refreshToken: async () => null,
 });
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -72,6 +73,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const now = Math.floor(Date.now() / 1000);
     if (data.session.expires_at > now) return data;
 
+    const newData = await refreshTokenApi(data.session.refresh_token);
+    if (newData) {
+      await updateAuthState({ isLoggedIn: true, data: newData });
+    }
+    return newData;
+  };
+
+  const refreshToken = async (
+    data: AuthData
+  ): Promise<AuthData | null> => {
     const newData = await refreshTokenApi(data.session.refresh_token);
     if (newData) {
       await updateAuthState({ isLoggedIn: true, data: newData });
@@ -267,6 +278,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         forgotPassword,
         logIn,
         logOut,
+        refreshToken,
       }}
     >
       {children}
