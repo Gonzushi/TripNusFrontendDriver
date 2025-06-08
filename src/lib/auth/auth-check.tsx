@@ -14,12 +14,20 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
     return <Redirect href="/welcome" />;
   }
 
-  if (!authState.authData?.firstName) {
-    return <Redirect href="/profile-setup" />;
+  if (!authState.authData?.driverId) {
+    return <Redirect href="/profile-setup-1" />;
   }
 
-  if (!authState.authData?.riderId) {
-    return <Redirect href="/profile-success" />;
+  if (
+    !authState.authData?.driverFirstName ||
+    !authState.authData?.driverLastName ||
+    !authState.authData?.phone
+  ) {
+    return <Redirect href="/profile-setup-2" />;
+  }
+
+  if (!authState.authData?.driverStatus) {
+    return <Redirect href="/profile-setup-3" />;
   }
 
   return children;

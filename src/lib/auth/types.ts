@@ -93,7 +93,10 @@ export type AuthData = {
   riderId: string;
   riderProfilePictureUrl: string | null;
   driverId: string | null;
+  driverFirstName: string | null;
+  driverLastName: string | null;
   driverProfilePictureUrl: string | null;
+  driverStatus: string | null;
 };
 
 export type AuthStateInternal = {

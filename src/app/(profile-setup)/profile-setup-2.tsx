@@ -6,10 +6,10 @@ import { Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AuthContext } from '@/lib/auth';
 import {
   type ProfileFormData,
+  updateDriverProfileApi,
   updatePhoneApi,
-  updateProfileApi,
   validateProfileForm,
-} from '@/lib/user';
+} from '@/lib/driver';
 
 // Logo component
 function Logo() {
@@ -149,7 +149,7 @@ export default function ProfileSetup() {
   // Effects
   useEffect(() => {
     if (authData?.firstName && authData?.phone) {
-      router.replace('/profile-success');
+      router.replace('/profile-setup-3');
     }
   }, [authData]);
 
@@ -176,10 +176,12 @@ export default function ProfileSetup() {
       }
 
       // Update profile
-      const profileData = await updateProfileApi(
+      const profileData = await updateDriverProfileApi(
         authData.session.access_token,
-        formData.firstName,
-        formData.lastName
+        {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+        }
       );
 
       if (profileData.status !== 200) {
@@ -201,20 +203,11 @@ export default function ProfileSetup() {
         ...authData,
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim() || null,
-        user: {
-          ...authData.user,
-          phone: formData.phoneNumber.trim(),
-        },
-        session: {
-          ...authData.session,
-          user: {
-            ...authData.session.user,
-            phone: formData.phoneNumber.trim(),
-          },
-        },
+        phone: formData.phoneNumber.trim(),
       };
       await setAuthData(updatedAuthData);
-      router.replace('/profile-success');
+      console.log(authData);
+      router.replace('/profile-setup-3');
     } catch (error) {
       await handleError(error as Error);
     } finally {
@@ -257,6 +250,7 @@ export default function ProfileSetup() {
                 setFormData((prev) => ({ ...prev, lastName: text }))
               }
               placeholder="Masukkan nama belakang Anda"
+              isRequired
               isLoading={isLoading}
               autoCapitalize="words"
             />

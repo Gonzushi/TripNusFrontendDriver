@@ -1,7 +1,7 @@
 import { useContext, useState } from 'react';
 
 import { AuthContext } from '@/lib/auth';
-import { updatePhoneApi, updateProfileApi } from '@/lib/user/api';
+import { updatePhoneApi, updateProfileApi } from '@/lib/driver/api';
 
 interface FormData {
   firstName: string;

@@ -32,17 +32,17 @@ require('dotenv').config({
  * Such as: bundle id, package name, app name.
  *
  * You can add them to the .env file but we think it's better to keep them here as as we use prefix to generate this values based on the APP_ENV
- * for example: if the APP_ENV is staging, the bundle id will be com.obytes.staging
+ * for example: if the APP_ENV wis staging, the bundle id will be com.obytes.staging
  */
 
 // TODO: Replace these values with your own
 
-const BUNDLE_ID = 'com.tripnus.rider'; // ios bundle id
-const PACKAGE = 'com.tripnus.rider'; // android package name
-const NAME = 'TripNus'; // app name
+const BUNDLE_ID = 'com.tripnus.driver'; // ios bundle id
+const PACKAGE = 'com.tripnus.driver'; // android package name
+const NAME = 'TripNus Partner'; // app name
 const EXPO_ACCOUNT_OWNER = 'hendrywidyanto'; // expo account owner
-const EAS_PROJECT_ID = '1a0bc73d-f154-487d-a6aa-2aae52766930'; // eas project id
-const SCHEME = 'tripnus-rider'; // app scheme
+const EAS_PROJECT_ID = '1a2f5005-511d-43f1-9a87-22421a7fda60'; // eas project id
+const SCHEME = 'tripnus-driver'; // app scheme
 
 /**
  * We declare a function withEnvSuffix that will add a suffix to the variable name based on the APP_ENV
@@ -123,7 +123,7 @@ const _buildTimeEnv = {
   EXPO_ACCOUNT_OWNER,
   EAS_PROJECT_ID,
   // ADD YOUR ENV VARS HERE TOO
-  GOOGLE_SERVICES_FILE: `./google-services.${APP_ENV}.json`,
+  GOOGLE_SERVICES_FILE: `./google-services.json`,
   API_URL: process.env.API_URL,
   GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
 };

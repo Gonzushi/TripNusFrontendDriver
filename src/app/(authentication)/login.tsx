@@ -111,7 +111,7 @@ export default function Login() {
               Selamat Datang Kembali
             </Text>
             <Text className="text-center text-base text-gray-600">
-              Masuk ke akun Anda untuk melanjutkan perjalanan
+              Masuk ke akun Anda untuk mulai menerima order perjalanan.
             </Text>
           </View>
 

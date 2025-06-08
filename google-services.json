@@ -1,0 +1,124 @@
+{
+  "project_info": {
+    "project_number": "906949460227",
+    "project_id": "tripnus",
+    "storage_bucket": "tripnus.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:906949460227:android:d764bb70ea8c49c2afe936",
+        "android_client_info": {
+          "package_name": "com.tripnus.driver.development"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0_i_u5GvRGNItqvzixhUoFj8mfFQJ7Sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:906949460227:android:2bf421e1b1633e7dafe936",
+        "android_client_info": {
+          "package_name": "com.tripnus.driver.production"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0_i_u5GvRGNItqvzixhUoFj8mfFQJ7Sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:906949460227:android:378951665ed20977afe936",
+        "android_client_info": {
+          "package_name": "com.tripnus.driver.staging"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0_i_u5GvRGNItqvzixhUoFj8mfFQJ7Sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:906949460227:android:933dfdf2d3c654e9afe936",
+        "android_client_info": {
+          "package_name": "com.tripnus.rider.development"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0_i_u5GvRGNItqvzixhUoFj8mfFQJ7Sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:906949460227:android:e9154ef93f36ce67afe936",
+        "android_client_info": {
+          "package_name": "com.tripnus.rider.production"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0_i_u5GvRGNItqvzixhUoFj8mfFQJ7Sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:906949460227:android:c34eadfd114c36d2afe936",
+        "android_client_info": {
+          "package_name": "com.tripnus.rider.staging"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0_i_u5GvRGNItqvzixhUoFj8mfFQJ7Sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

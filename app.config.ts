@@ -2,17 +2,13 @@ import type { ConfigContext, ExpoConfig } from '@expo/config';
 
 import { ClientEnv, Env } from './env';
 
-console.log('Running app.config.ts \n');
-console.log('Env', Env);
-console.log('ClientEnv', ClientEnv);
-
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: Env.NAME,
   description: `${Env.NAME} Mobile App`,
   owner: Env.EXPO_ACCOUNT_OWNER,
   scheme: Env.SCHEME,
-  slug: 'TripNusFrontendRider',
+  slug: 'tripnusfrontenddriver',
   version: Env.VERSION.toString(),
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -33,6 +29,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'This app uses your location to show nearby places.',
       NSLocationAlwaysUsageDescription:
         'This app uses your location in the background to improve your experience.',
+      NSPhotoLibraryUsageDescription:
+        'TripNus memerlukan akses ke galeri foto Anda untuk mengupload dokumen seperti KTP, SIM, dan STNK.',
+      NSCameraUsageDescription:
+        'TripNus memerlukan akses ke kamera Anda untuk mengambil foto dokumen seperti KTP, SIM, dan STNK.',
     },
   },
   android: {
@@ -48,6 +48,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         apiKey: Env.GOOGLE_API_KEY,
       },
     },
+    permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE'],
   },
   web: {
     bundler: 'metro',
@@ -82,6 +83,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         androidMode: 'default',
         androidCollapsedTitle: 'TripNus',
         iosDisplayInForeground: true,
+      },
+    ],
+    [
+      'expo-image-picker',
+      {
+        photosPermission:
+          'TripNus memerlukan akses ke galeri foto Anda untuk mengupload dokumen seperti Foto Profil, KTP, SIM, dan STNK.',
+        cameraPermission:
+          'TripNus memerlukan akses ke kamera Anda untuk mengambil foto dokumen seperti Foto Profil, KTP, SIM, dan STNK.',
       },
     ],
   ],

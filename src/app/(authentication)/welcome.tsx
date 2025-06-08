@@ -1,10 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+
+type AuthRoutes = '/(authentication)/login' | '/(authentication)/register';
 
 export default function Welcome() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Reset loading state when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(false);
+    }, [])
+  );
+
+  const handleNavigation = (route: AuthRoutes) => {
+    if (isLoading) return;
+    setIsLoading(true);
+    router.push(route);
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -35,11 +52,11 @@ export default function Welcome() {
           {/* Text Content */}
           <View className="mt-8 items-center">
             <Text className="mb-4 text-center text-3xl font-bold text-gray-900">
-              Partner Perjalanan Terpercaya Anda
+              Bergabung Sebagai Mitra Driver
             </Text>
             <Text className="text-center text-base text-gray-600">
-              Perjalanan cepat, aman, dan nyaman dalam genggaman Anda.
-              Bergabunglah sekarang!
+              Dapatkan penghasilan tambahan dengan jadwal fleksibel. Jadilah
+              bagian dari revolusi transportasi Indonesia!
             </Text>
           </View>
         </View>
@@ -49,27 +66,34 @@ export default function Welcome() {
           {/* Buttons */}
           <View className="space-y-6">
             <TouchableOpacity
-              className="mb-6 items-center rounded-xl border border-blue-600 py-4"
-              onPress={() => router.push('/register')}
+              className={`mb-6 items-center rounded-xl border border-blue-600 py-4 ${
+                isLoading ? 'opacity-50' : ''
+              }`}
+              onPress={() => handleNavigation('/(authentication)/register')}
+              disabled={isLoading}
             >
               <Text className="text-base font-semibold text-blue-600">
-                Mulai sekarang
+                Daftar sebagai Driver
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="mb-16 items-center rounded-xl bg-blue-600 py-4"
-              onPress={() => router.push('/login')}
+              className={`mb-16 items-center rounded-xl bg-blue-600 py-4 ${
+                isLoading ? 'opacity-50' : ''
+              }`}
+              onPress={() => handleNavigation('/(authentication)/login')}
+              disabled={isLoading}
             >
               <Text className="text-base font-semibold text-white">
-                Saya sudah punya akun
+                Masuk ke akun Driver
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Terms */}
           <Text className="text-center text-sm text-gray-500">
-            Dengan melanjutkan, Anda menyetujui Syarat dan Ketentuan kami
+            Dengan melanjutkan, Anda menyetujui Syarat dan Ketentuan serta
+            Kebijakan Privasi kami
           </Text>
         </View>
       </View>
