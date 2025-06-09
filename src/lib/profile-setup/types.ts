@@ -5,9 +5,13 @@ export type FormInputData = {
   [K in keyof UpdateDriverProfileData]: string;
 };
 
-// Document upload state type
+// Uploaded documents state
 export type UploadedDocsState = {
+  profile: boolean;
   ktp: boolean;
   license: boolean;
   stnk: boolean;
 };
+
+// Vehicle type values
+export type VehicleTypeValue = 'car' | 'motorcycle';

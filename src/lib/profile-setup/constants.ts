@@ -5,9 +5,28 @@ export const VEHICLE_YEARS = Array.from(
   (_, i) => String(currentYear - i)
 ) as readonly string[];
 
-export const VEHICLE_TYPES = ['Mobil', 'Sepeda Motor'] as const;
+export type VehicleTypeOption = {
+  label: string;
+  value: 'car' | 'motorcycle';
+};
+
+export type GenderTypeOption = {
+  label: string;
+  value: 'male' | 'female';
+};
+
+
+export const VEHICLE_TYPES: readonly VehicleTypeOption[] = [
+  { label: 'Mobil', value: 'car' },
+  { label: 'Sepeda Motor', value: 'motorcycle' },
+] as const;
+
+export const GENDER_OPTIONS: readonly GenderTypeOption[] = [
+  { label: 'Laki-laki', value: 'male' },
+  { label: 'Perempuan', value: 'female' },
+] as const;
+
 export const DRIVER_LICENSE_CLASSES = ['A', 'C'] as const;
-export const GENDER_OPTIONS = ['Laki-laki', 'Perempuan'] as const;
 
 // Vehicle brands and colors
 

@@ -102,6 +102,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         recordAudioAndroid: true,
       },
     ],
+    [
+      'expo-location',
+      {
+        locationAlwaysAndWhenInUsePermission:
+          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat mengantar pesanan.',
+        locationAlwaysPermission:
+          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat mengantar pesanan, termasuk saat aplikasi berjalan di latar belakang.',
+        locationWhenInUsePermission:
+          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat mengantar pesanan.',
+        isIosBackgroundLocationEnabled: true,
+        isAndroidBackgroundLocationEnabled: true,
+      },
+    ],
   ],
   experiments: { typedRoutes: true },
   extra: { ...ClientEnv, eas: { projectId: Env.EAS_PROJECT_ID } },

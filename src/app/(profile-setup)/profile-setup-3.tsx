@@ -63,6 +63,7 @@ export default function ProfileSetup3() {
     ReturnType<typeof validateForm>['errors']
   >({});
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocsState>({
+    profile: false,
     ktp: false,
     license: false,
     stnk: false,
@@ -103,7 +104,6 @@ export default function ProfileSetup3() {
         return;
       }
 
-      console.log('launching image picker');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: 'images',
         allowsEditing: true,
@@ -133,8 +133,6 @@ export default function ProfileSetup3() {
             authData!.session.access_token,
             formData
           );
-
-          console.log('upload response:', uploadResponse);
 
           if (uploadResponse.status === 200) {
             setUploadedDocs((prev) => ({ ...prev, [type]: true }));
@@ -186,6 +184,7 @@ export default function ProfileSetup3() {
 
       if (uploadResponse.status === 200) {
         setProfilePictureUploaded(true);
+        setUploadedDocs((prev) => ({ ...prev, profile: true }));
         Alert.alert('Sukses', 'Foto profil berhasil diupload');
       } else {
         Alert.alert(
@@ -316,9 +315,19 @@ export default function ProfileSetup3() {
           />
           <SelectionInput
             label="Jenis Kelamin"
-            value={formData.sex || ''}
-            onSelect={(value) => handleFormChange('sex', value)}
-            options={GENDER_OPTIONS}
+            value={
+              GENDER_OPTIONS.find((vehicle) => vehicle.value === formData.sex)
+                ?.label || ''
+            }
+            onSelect={(label) => {
+              const matched = GENDER_OPTIONS.find(
+                (gender) => gender.label === label
+              );
+              if (matched) {
+                handleFormChange('sex', matched.value);
+              }
+            }}
+            options={GENDER_OPTIONS.map((gender) => gender.label)}
             error={formErrors.sex}
           />
           <FormInput
@@ -386,10 +395,29 @@ export default function ProfileSetup3() {
           <SectionHeader title="Informasi Kendaraan" />
           <SelectionInput
             label="Tipe Kendaraan"
-            value={formData.vehicle_type || ''}
-            onSelect={(value) => handleFormChange('vehicle_type', value)}
-            options={VEHICLE_TYPES}
+            // value={formData.vehicle_type || ''}
+            value={
+              VEHICLE_TYPES.find(
+                (vehicle) => vehicle.value === formData.vehicle_type
+              )?.label || ''
+            }
+            onSelect={(label) => {
+              const matched = VEHICLE_TYPES.find(
+                (vehicle) => vehicle.label === label
+              );
+              if (matched) {
+                handleFormChange('vehicle_type', matched.value);
+              }
+            }}
+            options={VEHICLE_TYPES.map((type) => type.label)}
             error={formErrors.vehicle_type}
+          />
+          <SelectionInput
+            label="Tahun Kendaraan"
+            value={formData.vehicle_year || ''}
+            onSelect={(value) => handleFormChange('vehicle_year', value)}
+            options={VEHICLE_YEARS}
+            error={formErrors.vehicle_year}
           />
           <SelectionInput
             label="Merek Kendaraan"
@@ -398,13 +426,6 @@ export default function ProfileSetup3() {
             options={VEHICLE_BRANDS}
             error={formErrors.vehicle_brand}
             useModal={true}
-          />
-          <SelectionInput
-            label="Tahun Kendaraan"
-            value={formData.vehicle_year || ''}
-            onSelect={(value) => handleFormChange('vehicle_year', value)}
-            options={VEHICLE_YEARS}
-            error={formErrors.vehicle_year}
           />
           <FormInput
             label="Model Kendaraan"

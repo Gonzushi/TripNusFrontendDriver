@@ -263,7 +263,23 @@ export default function Index() {
   const [profilePictureUri, setProfilePictureUri] = useState<string | null>(
     null
   );
-  const { isOnline, walletBalance, setOnline } = useDriverStore();
+  const {
+    isOnline,
+    walletBalance,
+    setOnline,
+    setDriverId,
+    setVehicleType,
+    setVehiclePlateNumber,
+  } = useDriverStore();
+
+  // Initialize driver ID
+  useEffect(() => {
+    if (authData?.driverId) {
+      setDriverId(authData.driverId);
+      setVehicleType(authData.driverVehicleType!);
+      setVehiclePlateNumber(authData.driverVehiclePlateNumber!);
+    }
+  }, [authData?.driverId, setDriverId]);
 
   // Load profile picture
   const refreshProfilePicture = async () => {

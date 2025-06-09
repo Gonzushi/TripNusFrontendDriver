@@ -97,8 +97,9 @@ export type AuthData = {
   driverLastName: string | null;
   driverProfilePictureUrl: string | null;
   driverStatus: string | null;
-  driverStatusSuccessConfirmed: string | null;
   driverNotes: string | null;
+  driverVehicleType: string | null;
+  driverVehiclePlateNumber: string | null;
 };
 
 export type AuthStateInternal = {

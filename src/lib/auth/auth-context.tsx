@@ -83,9 +83,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return newData;
   };
 
-  const refreshToken = async (
-    data: AuthData
-  ): Promise<AuthData | null> => {
+  const refreshToken = async (data: AuthData): Promise<AuthData | null> => {
     const newData = await refreshTokenApi(data.session.refresh_token);
     if (newData) {
       await updateAuthState({ isLoggedIn: true, data: newData });
@@ -238,7 +236,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (value) {
           const storedState = JSON.parse(value);
           if (storedState.isLoggedIn && storedState.data) {
-            await checkAndRefreshToken(storedState.data);
+            const validData = await checkAndRefreshToken(storedState.data);
+            await updateAuthState({
+              isLoggedIn: !!validData,
+              data: validData,
+            });
           }
         }
       } catch (error) {

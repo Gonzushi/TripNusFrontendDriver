@@ -148,7 +148,7 @@ export default function ProfileSetup() {
 
   // Effects
   useEffect(() => {
-    if (authData?.firstName && authData?.phone) {
+    if (authData?.driverFirstName && authData?.driverLastName && authData?.phone) {
       router.replace('/profile-setup-3');
     }
   }, [authData]);
@@ -206,7 +206,6 @@ export default function ProfileSetup() {
         phone: formData.phoneNumber.trim(),
       };
       await setAuthData(updatedAuthData);
-      console.log(authData);
       router.replace('/profile-setup-3');
     } catch (error) {
       await handleError(error as Error);
