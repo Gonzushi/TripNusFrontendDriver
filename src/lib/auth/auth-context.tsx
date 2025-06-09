@@ -13,6 +13,9 @@ import {
   downloadAndSaveProfilePicture,
 } from '@/lib/profile-picture';
 
+import { stopBackgroundUpdates } from '../background/location-service';
+import { useDriverStore } from '../driver/store';
+import { webSocketService } from '../websocket/websocket-service';
 import {
   changePasswordApi,
   forgotPasswordApi,
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     data: null,
   });
   const router = useRouter();
+  const { setOnline } = useDriverStore();
 
   // Auth State Management
   const updateAuthState = async (newState: AuthStateInternal) => {
@@ -219,6 +223,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch (error) {
       console.error('Error during logout:', error);
     } finally {
+      setOnline(false);
       const userId = authState.data?.user.id;
       await updateAuthState({ isLoggedIn: false, data: null });
       if (userId) {
@@ -247,6 +252,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         console.error('Error initializing auth:', error);
       }
       setIsReady(true);
+      await stopBackgroundUpdates();
+      webSocketService.disconnect();
     };
 
     initializeAuth();

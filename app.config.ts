@@ -23,12 +23,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       googleMapsApiKey: Env.GOOGLE_API_KEY,
     },
     infoPlist: {
-      UIBackgroundModes: ['remote-notification'],
+      UIBackgroundModes: ['remote-notification', 'location', 'fetch'],
       'aps-environment': 'development',
       NSLocationWhenInUseUsageDescription:
         'This app uses your location to show nearby places.',
       NSLocationAlwaysUsageDescription:
         'This app uses your location in the background to improve your experience.',
+      NSLocationAlwaysAndWhenInUseUsageDescription:
+        'TripNus Driver needs your location to track your position while receiving and executing passenger orders, including when the app is running in the background.',
       NSPhotoLibraryUsageDescription:
         'TripNus memerlukan akses ke galeri foto Anda untuk mengupload dokumen seperti KTP, SIM, dan STNK.',
       NSCameraUsageDescription:
@@ -48,7 +50,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         apiKey: Env.GOOGLE_API_KEY,
       },
     },
-    permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE'],
+    permissions: [
+      'CAMERA',
+      'READ_EXTERNAL_STORAGE',
+      'WRITE_EXTERNAL_STORAGE',
+      'ACCESS_BACKGROUND_LOCATION',
+      'ACCESS_COARSE_LOCATION',
+      'ACCESS_FINE_LOCATION',
+    ],
   },
   web: {
     bundler: 'metro',
@@ -106,15 +115,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-location',
       {
         locationAlwaysAndWhenInUsePermission:
-          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat mengantar pesanan.',
+          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat menerima dan menjalankan orderan penumpang.',
         locationAlwaysPermission:
-          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat mengantar pesanan, termasuk saat aplikasi berjalan di latar belakang.',
+          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat menerima dan menjalankan orderan penumpang, termasuk saat aplikasi berjalan di latar belakang.',
         locationWhenInUsePermission:
-          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat mengantar pesanan.',
+          'TripNus Driver memerlukan akses lokasi untuk mengetahui posisi Anda saat menerima dan menjalankan orderan penumpang.',
         isIosBackgroundLocationEnabled: true,
         isAndroidBackgroundLocationEnabled: true,
       },
     ],
+    'expo-task-manager',
   ],
   experiments: { typedRoutes: true },
   extra: { ...ClientEnv, eas: { projectId: Env.EAS_PROJECT_ID } },

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { startBackgroundUpdates, stopBackgroundUpdates } from '@/lib/background/location-service';
 import { webSocketService } from '@/lib/websocket/websocket-service';
 
 type DriverStore = {
@@ -11,7 +12,7 @@ type DriverStore = {
   setDriverId: (id: string) => void;
   setVehicleType: (type: string) => void;
   setVehiclePlateNumber: (plate: string) => void;
-  setOnline: (status: boolean) => void;
+  setOnline: (status: boolean) => Promise<void>;
   setWalletBalance: (balance: number) => void;
 };
 
@@ -24,20 +25,34 @@ export const useDriverStore = create<DriverStore>((set) => ({
   setDriverId: (id) => set({ driverId: id }),
   setVehicleType: (type) => set({ driverVehicleType: type }),
   setVehiclePlateNumber: (plate) => set({ driverVehiclePlateNumber: plate }),
-  setOnline: (status) => {
+  setOnline: async (status) => {
     if (status) {
-      // Connect to WebSocket when going online
+      // Get current state
       const state = useDriverStore.getState();
-      if (state.driverId) {
-        webSocketService.connect(
-          state.driverId,
-          state.driverVehicleType!,
-          state.driverVehiclePlateNumber!
-        );
+      if (
+        !state.driverId ||
+        !state.driverVehicleType ||
+        !state.driverVehiclePlateNumber
+      ) {
+        console.error('Missing driver information');
+        return;
       }
+
+      // Connect to WebSocket
+      webSocketService.connect(
+        state.driverId,
+        state.driverVehicleType,
+        state.driverVehiclePlateNumber
+      );
+
+      // Start background location updates
+      await startBackgroundUpdates();
     } else {
-      // Disconnect from WebSocket when going offline
+      // Disconnect WebSocket
       webSocketService.disconnect();
+
+      // Stop background location updates
+      await stopBackgroundUpdates();
     }
     set({ isOnline: status });
   },

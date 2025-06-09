@@ -4,13 +4,17 @@ import { io, type Socket } from 'socket.io-client';
 // Constants
 const WEBSOCKET_URL = 'wss://ws.trip-nus.com';
 // const WEBSOCKET_URL = 'http://localhost:3001';
-const LOCATION_UPDATE_INTERVAL = 60 * 1000; // 10 seconds
+
+const LOCATION_UPDATE_INTERVAL = 5 * 1000;
+const DISTANCE_UPDATE_INTERVAL = 0;
+
 const DEFAULT_LOCATION = {
   lat: null,
   lng: null,
 };
 
 type DriverData = {
+  socketId?: string;
   role: 'driver';
   id: string;
   location: {
@@ -140,6 +144,7 @@ class WebSocketService {
     if (!this.driverId) throw new Error('Missing driver data');
 
     return {
+      socketId: this.socket!.id!,
       role: 'driver',
       id: this.driverId,
       location: this.currentLocation,
@@ -177,7 +182,7 @@ class WebSocketService {
         {
           accuracy: Location.Accuracy.High,
           timeInterval: LOCATION_UPDATE_INTERVAL,
-          distanceInterval: 200, // Update if moved by 10 meters
+          distanceInterval: DISTANCE_UPDATE_INTERVAL,
         },
         (location) => {
           this.updateCurrentLocation(location);
@@ -198,7 +203,7 @@ class WebSocketService {
       const data = this.createDriverData();
       this.socket.emit('driver:updateLocation', data);
       console.log(
-        '📍 Location updated:',
+        '📍 Websocket Location updated:',
         this.currentLocation.lat,
         ',',
         this.currentLocation.lng

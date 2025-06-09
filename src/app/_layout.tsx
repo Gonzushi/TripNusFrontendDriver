@@ -1,3 +1,4 @@
+import '@/lib/background/background-location-task';
 import '../../global.css';
 
 import { Stack } from 'expo-router';

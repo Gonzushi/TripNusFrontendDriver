@@ -1,8 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useContext, useEffect, useState } from 'react';
+import * as Location from 'expo-location';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
+  AppState,
+  type AppStateStatus,
   Image,
+  Linking,
+  Platform,
   ScrollView,
   Share,
   Text,
@@ -16,10 +22,96 @@ import NotificationDebug from '@/lib/notification/notification-debug';
 import { getProfilePictureUri } from '@/lib/profile-picture';
 import { SafeView } from '@/lib/safe-view';
 
+const DEBUG_MODE = true;
+
+// Store for console logs
+const consoleLogStore = {
+  logs: [] as Array<{ timestamp: string; message: string }>,
+  maxSize: 100,
+  subscribers: [] as Array<() => void>,
+  addLog(message: string) {
+    this.logs.push({
+      timestamp: new Date().toLocaleTimeString(),
+      message,
+    });
+    if (this.logs.length > this.maxSize) {
+      this.logs.shift();
+    }
+    this.subscribers.forEach((cb) => cb());
+  },
+  getLogs() {
+    return this.logs;
+  },
+  subscribe(cb: () => void) {
+    this.subscribers.push(cb);
+  },
+  unsubscribe(cb: () => void) {
+    this.subscribers = this.subscribers.filter((fn) => fn !== cb);
+  },
+};
+
+// Override console.log to capture logs
+const originalConsoleLog = console.log;
+console.log = (...args: any[]) => {
+  const message = args.map(String).join(' ');
+  consoleLogStore.addLog(message);
+  originalConsoleLog(...args);
+};
+
+// Console log viewer component (real-time)
+function ConsoleLogViewer() {
+  const [logs, setLogs] = useState(consoleLogStore.getLogs());
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const update = () => setLogs([...consoleLogStore.getLogs()]);
+    consoleLogStore.subscribe(update);
+    return () => {
+      consoleLogStore.unsubscribe(update);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Scroll to end whenever logs change
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
+    }
+  }, [logs]);
+
+  return (
+    <View className="mt-4 px-4">
+      <View
+        className="rounded-xl border border-gray-800 bg-black p-4"
+        style={{ minHeight: 120 }}
+      >
+        <Text className="mb-2 text-sm font-medium text-gray-100">
+          Real-time Console Logs
+        </Text>
+        <ScrollView
+          className="max-h-60"
+          ref={scrollViewRef}
+          onContentSizeChange={() => {
+            if (scrollViewRef.current) {
+              scrollViewRef.current.scrollToEnd({ animated: true });
+            }
+          }}
+        >
+          {logs.map((log, index) => (
+            <View key={index} className="mb-2">
+              <Text className="text-xs text-gray-400">{log.timestamp}:</Text>
+              <Text className="text-xs text-gray-100">{log.message}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
+
 // Wallet balance component
 function WalletBalance({ balance }: { balance: number }) {
   return (
-    <View className="mb-4 px-4">
+    <View className="px-4">
       <View className="rounded-xl border border-gray-200 bg-white p-4">
         <View className="flex-row items-center justify-between">
           <View>
@@ -49,16 +141,45 @@ function OnlineStatusToggle({
   isOnline,
   onToggle,
   isDisabled,
+  hasLocationPermission,
 }: {
   isOnline: boolean;
   onToggle: () => void;
   isDisabled: boolean;
+  hasLocationPermission: boolean;
 }) {
+  const handlePress = () => {
+    if (!hasLocationPermission && !isOnline) {
+      Alert.alert(
+        'Izin Lokasi Diperlukan',
+        'Untuk dapat menerima orderan, TripNus Driver memerlukan akses lokasi "Selalu Diizinkan". Silakan ubah pengaturan lokasi di pengaturan perangkat Anda.',
+        [
+          {
+            text: 'Batal',
+            style: 'cancel',
+          },
+          {
+            text: 'Buka Pengaturan',
+            onPress: () => {
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              } else {
+                Linking.openSettings();
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+    onToggle();
+  };
+
   return (
     <View className="mt-4">
       <View className="px-4">
         <TouchableOpacity
-          onPress={onToggle}
+          onPress={handlePress}
           disabled={isDisabled}
           className={`flex-row items-center justify-center rounded-xl py-4 ${
             isDisabled ? 'bg-gray-300' : isOnline ? 'bg-red-500' : 'bg-blue-600'
@@ -263,6 +384,7 @@ export default function Index() {
   const [profilePictureUri, setProfilePictureUri] = useState<string | null>(
     null
   );
+  const [hasLocationPermission, setHasLocationPermission] = useState(true);
   const {
     isOnline,
     walletBalance,
@@ -271,6 +393,60 @@ export default function Index() {
     setVehicleType,
     setVehiclePlateNumber,
   } = useDriverStore();
+
+  const checkLocationPermissions = async () => {
+    const { status: foregroundStatus } =
+      await Location.getForegroundPermissionsAsync();
+    const { status: backgroundStatus } =
+      await Location.getBackgroundPermissionsAsync();
+
+    if (Platform.OS === 'ios') {
+      const backgroundPermission =
+        await Location.getBackgroundPermissionsAsync();
+      const hasPermission =
+        foregroundStatus === 'granted' &&
+        backgroundStatus === 'granted' &&
+        backgroundPermission.status === 'granted';
+      setHasLocationPermission(hasPermission);
+
+      // If permissions are denied and driver is online, turn them offline
+      if (!hasPermission && isOnline) {
+        setOnline(false);
+      }
+    } else {
+      const hasPermission =
+        foregroundStatus === 'granted' && backgroundStatus === 'granted';
+      setHasLocationPermission(hasPermission);
+
+      // If permissions are denied and driver is online, turn them offline
+      if (!hasPermission && isOnline) {
+        setOnline(false);
+      }
+    }
+  };
+
+  // Check permissions when app comes to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener(
+      'change',
+      (nextAppState: AppStateStatus) => {
+        if (nextAppState === 'active') {
+          checkLocationPermissions();
+        }
+      }
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isOnline]);
+
+  // Check permissions when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      checkLocationPermissions();
+    }, [])
+  );
 
   // Initialize driver ID
   useEffect(() => {
@@ -294,7 +470,36 @@ export default function Index() {
   }, [authData?.user.id, authData?.riderProfilePictureUrl]);
 
   // Event handlers
-  const handleToggleOnline = () => {
+  const handleToggleOnline = async () => {
+    if (!isOnline) {
+      // Check location permission when turning online
+      await checkLocationPermissions();
+
+      if (!hasLocationPermission) {
+        Alert.alert(
+          'Izin Lokasi Diperlukan',
+          'Untuk dapat menerima orderan, TripNus Driver memerlukan akses lokasi "Selalu Diizinkan". Silakan ubah pengaturan lokasi di pengaturan perangkat Anda.',
+          [
+            {
+              text: 'Batal',
+              style: 'cancel',
+            },
+            {
+              text: 'Buka Pengaturan',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+    }
+
     setOnline(!isOnline);
   };
 
@@ -341,7 +546,25 @@ export default function Index() {
           isOnline={isOnline}
           onToggle={handleToggleOnline}
           isDisabled={walletBalance < 0}
+          hasLocationPermission={hasLocationPermission}
         />
+
+        {!hasLocationPermission && (
+          <View className="mt-4 px-4">
+            <View className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+              <View className="flex-row items-start">
+                <View className="mr-3 mt-0.5">
+                  <Ionicons name="warning" size={20} color="#B45309" />
+                </View>
+                <Text className="flex-1 text-sm text-yellow-800">
+                  Untuk dapat menerima orderan, izinkan TripNus Driver mengakses
+                  lokasi Anda dengan opsi "Selalu Diizinkan" di pengaturan
+                  perangkat.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         <View className="mt-4 px-4">
           <View className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
@@ -362,6 +585,8 @@ export default function Index() {
         </View>
 
         <CommunitySupport onShare={handleInvite} />
+
+        {DEBUG_MODE && <ConsoleLogViewer />}
 
         <NotificationDebug />
 
