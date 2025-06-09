@@ -6,6 +6,10 @@ import { AuthContext } from './auth-context';
 export default function AuthCheck({ children }: { children: React.ReactNode }) {
   const authState = useContext(AuthContext);
 
+  if (authState.authData) {
+    authState.checkAndRefreshToken(authState.authData);
+  }
+
   if (!authState.isReady) {
     return null;
   }
@@ -30,7 +34,10 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
     return <Redirect href="/profile-setup-3" />;
   }
 
-  if (authState.authData?.driverStatus && authState.authData?.driverStatusSuccessConfirmed != 'confirmed') {
+  if (
+    authState.authData?.driverStatus &&
+    authState.authData?.driverStatus != 'confirmed'
+  ) {
     return <Redirect href="/profile-setup-4" />;
   }
 

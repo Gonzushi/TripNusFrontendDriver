@@ -11,19 +11,85 @@ import {
 } from 'react-native';
 
 import { AuthContext } from '@/lib/auth';
+import { useDriverStore } from '@/lib/driver/store';
 import NotificationDebug from '@/lib/notification/notification-debug';
 import { getProfilePictureUri } from '@/lib/profile-picture';
 import { SafeView } from '@/lib/safe-view';
+
+// Wallet balance component
+function WalletBalance({ balance }: { balance: number }) {
+  return (
+    <View className="mb-4 px-4">
+      <View className="rounded-xl border border-gray-200 bg-white p-4">
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-base font-medium text-gray-800">
+              Saldo Dompet
+            </Text>
+            <Text className="mt-1 text-2xl font-bold text-blue-600">
+              Rp {balance.toLocaleString('id-ID')}
+            </Text>
+          </View>
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+            <Ionicons name="wallet" size={24} color="#3B82F6" />
+          </View>
+        </View>
+        {balance < 0 && (
+          <Text className="mt-2 text-sm font-medium text-red-500">
+            Harap isi saldo untuk dapat menerima orderan
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// Online status toggle component
+function OnlineStatusToggle({
+  isOnline,
+  onToggle,
+  isDisabled,
+}: {
+  isOnline: boolean;
+  onToggle: () => void;
+  isDisabled: boolean;
+}) {
+  return (
+    <View className="mt-4">
+      <View className="px-4">
+        <TouchableOpacity
+          onPress={onToggle}
+          disabled={isDisabled}
+          className={`flex-row items-center justify-center rounded-xl py-4 ${
+            isDisabled ? 'bg-gray-300' : isOnline ? 'bg-red-500' : 'bg-blue-600'
+          }`}
+        >
+          <Ionicons
+            name={isOnline ? 'power' : 'power-outline'}
+            size={20}
+            color="white"
+            className="mr-2"
+          />
+          <Text className="ml-2 text-base font-semibold text-white">
+            {isOnline ? 'Berhenti Menerima Order' : 'Mulai Menerima Order'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 // Header component with profile picture
 function Header({
   firstName,
   profilePictureUri,
   onProfilePress,
+  isOnline,
 }: {
   firstName: string;
   profilePictureUri: string | null;
   onProfilePress: () => void;
+  isOnline: boolean;
 }) {
   return (
     <View className="px-4 pb-4 pt-6">
@@ -35,9 +101,26 @@ function Header({
               {firstName}
             </Text>
           </View>
-          <Text className="mt-2 text-lg leading-6 text-gray-600">
-            Siap untuk petualangan berikutnya?
-          </Text>
+          <View className="mt-2">
+            <View
+              className={`flex-row items-center self-start rounded-full px-4 py-1.5 ${
+                isOnline ? 'bg-green-100' : 'bg-gray-100'
+              }`}
+            >
+              <View
+                className={`mr-2 h-2 w-2 rounded-full ${
+                  isOnline ? 'bg-green-500' : 'bg-gray-500'
+                }`}
+              />
+              <Text
+                className={`text-sm font-medium ${
+                  isOnline ? 'text-green-700' : 'text-gray-700'
+                }`}
+              >
+                {isOnline ? 'Sedang Aktif Menerima Order' : 'Tidak Aktif'}
+              </Text>
+            </View>
+          </View>
         </View>
         <TouchableOpacity
           onPress={onProfilePress}
@@ -138,39 +221,6 @@ function StatsSection() {
   );
 }
 
-// Search bar component
-function SearchBar({ onPress }: { onPress: () => void }) {
-  return (
-    <View className="mt-2 px-4">
-      <TouchableOpacity
-        onPress={onPress}
-        className="flex-row items-center rounded-xl border border-gray-200 bg-gray-50 p-4 active:bg-gray-100"
-      >
-        <Ionicons name="location" size={20} color="#6B7280" />
-        <Text className="ml-3 flex-1 text-gray-500">Masukkan tujuan Anda</Text>
-        <Ionicons name="search" size={20} color="#6B7280" />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// Start trip button component
-function StartTripButton({ onPress }: { onPress: () => void }) {
-  return (
-    <View className="mt-4 px-4">
-      <TouchableOpacity
-        onPress={onPress}
-        className="flex-row items-center justify-center rounded-xl bg-blue-600 py-4"
-      >
-        <Ionicons name="car" size={20} color="white" className="mr-2" />
-        <Text className="ml-2 text-base font-semibold text-white">
-          Mulai Perjalanan
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 // Community support section component
 function CommunitySupport({ onShare }: { onShare: () => void }) {
   return (
@@ -179,19 +229,19 @@ function CommunitySupport({ onShare }: { onShare: () => void }) {
         <View className="flex-row items-start">
           <View className="flex-1">
             <Text className="mb-1 text-base font-medium text-gray-800">
-              Dukung Inovasi Lokal
+              Ajak Rekan Driver Bergabung!
             </Text>
             <Text className="text-sm leading-5 text-gray-600">
-              Bantu kami mengembangkan komunitas ride-sharing lokal ini. Bagikan
-              TripNus kepada teman Anda dan jadilah bagian dari masa depan
-              transportasi Indonesia.
+              Punya teman yang ingin menambah penghasilan? Ajak mereka bergabung
+              sebagai Mitra Driver TripNus! Dapatkan bonus tambahan untuk setiap
+              rekomendasi yang berhasil bergabung.
             </Text>
             <TouchableOpacity
               onPress={onShare}
               className="mt-4 flex-row items-center"
             >
               <Text className="mr-1 font-medium text-blue-600">
-                Bagikan TripNus
+                Ajak Teman Driver
               </Text>
               <Ionicons name="arrow-forward" size={16} color="#2563EB" />
             </TouchableOpacity>
@@ -213,6 +263,7 @@ export default function Index() {
   const [profilePictureUri, setProfilePictureUri] = useState<string | null>(
     null
   );
+  const { isOnline, walletBalance, setOnline } = useDriverStore();
 
   // Load profile picture
   const refreshProfilePicture = async () => {
@@ -227,8 +278,8 @@ export default function Index() {
   }, [authData?.user.id, authData?.riderProfilePictureUrl]);
 
   // Event handlers
-  const handleSearchPress = () => {
-    router.push('/ride-request');
+  const handleToggleOnline = () => {
+    setOnline(!isOnline);
   };
 
   const handleInvite = async () => {
@@ -263,18 +314,31 @@ export default function Index() {
           firstName={authData?.firstName || 'Teman'}
           profilePictureUri={profilePictureUri}
           onProfilePress={handleProfilePress}
+          isOnline={isOnline}
         />
+
+        <WalletBalance balance={walletBalance} />
 
         <StatsSection />
 
-        <SearchBar onPress={handleSearchPress} />
-
-        <StartTripButton onPress={handleSearchPress} />
+        <OnlineStatusToggle
+          isOnline={isOnline}
+          onToggle={handleToggleOnline}
+          isDisabled={walletBalance < 0}
+        />
 
         <View className="mt-4 px-4">
-          <Text className="text-center text-gray-500">
-            TripNus — Perjalanan cepat, aman, dan terpercaya
-          </Text>
+          <View className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+            <View className="flex-row items-start">
+              <View className="mr-3 mt-0.5">
+                <Ionicons name="information-circle" size={20} color="#B45309" />
+              </View>
+              <Text className="flex-1 text-sm text-yellow-800">
+                Untuk tetap menerima order, pastikan aplikasi tetap berjalan di
+                latar belakang. Jangan tutup aplikasi saat sedang online.
+              </Text>
+            </View>
+          </View>
         </View>
 
         <View className="mb-6 mt-8 px-4">

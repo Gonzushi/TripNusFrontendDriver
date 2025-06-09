@@ -42,6 +42,7 @@ export const AuthContext = createContext<AuthContextType>({
   logIn: async () => {},
   logOut: async () => {},
   refreshToken: async () => null,
+  checkAndRefreshToken: async () => null,
 });
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -76,6 +77,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const newData = await refreshTokenApi(data.session.refresh_token);
     if (newData) {
       await updateAuthState({ isLoggedIn: true, data: newData });
+    } else {
+      await updateAuthState({ isLoggedIn: false, data: null });
     }
     return newData;
   };
@@ -96,10 +99,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     if (data) {
       await updateAuthState({ isLoggedIn: true, data });
-      if (data.riderProfilePictureUrl) {
+      if (data.driverProfilePictureUrl) {
         await downloadAndSaveProfilePicture(
           data.user.id,
-          data.riderProfilePictureUrl
+          data.driverProfilePictureUrl
         );
       }
       if (router.canDismiss()) {
@@ -235,11 +238,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (value) {
           const storedState = JSON.parse(value);
           if (storedState.isLoggedIn && storedState.data) {
-            const validData = await checkAndRefreshToken(storedState.data);
-            await updateAuthState({
-              isLoggedIn: !!validData,
-              data: validData,
-            });
+            await checkAndRefreshToken(storedState.data);
           }
         }
       } catch (error) {
@@ -279,6 +278,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         logIn,
         logOut,
         refreshToken,
+        checkAndRefreshToken,
       }}
     >
       {children}

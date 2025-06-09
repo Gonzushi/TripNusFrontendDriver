@@ -122,6 +122,7 @@ export type AuthContextType = {
   logIn: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
   refreshToken: (data: AuthData) => Promise<AuthData | null>;
+  checkAndRefreshToken: (data: AuthData) => Promise<AuthData | null>;
 };
 
 export type ApiRequestResponse<T> = {

@@ -191,14 +191,14 @@ export default function ProfileSetup4() {
       const response = await updateDriverProfileApi(
         authData.session.access_token,
         {
-          status_success_confirmed: 'confirmed',
+          status: 'confirmed',
         }
       );
 
       if (response.status === 200) {
         await setAuthData({
           ...authData,
-          driverStatusSuccessConfirmed: 'confirmed',
+          driverStatus: 'confirmed',
         });
         router.replace('/');
       } else {
@@ -231,11 +231,23 @@ export default function ProfileSetup4() {
 
         <View className="px-6">
           {/* Show different headers based on driver status */}
-          {authData.driverStatus === 'submitted' && <SubmittedHeader />}
-          {authData.driverStatus === 'approved' &&
-            authData.driverStatusSuccessConfirmed != 'confirmed' && (
-              <ApprovedHeader />
-            )}
+          {authData.driverStatus === 'submitted' && (
+            <View className="mx-2 mt-8 space-y-2">
+              <SubmittedHeader />
+              <ActionButton
+                onPress={handleRefresh}
+                icon="refresh"
+                text={
+                  isRefreshing ? 'Memperbarui Status...' : 'Perbarui Status'
+                }
+                color={isRefreshing ? 'bg-blue-400' : 'bg-blue-600'}
+              />
+              <Text className="whitespace-pre-line text-center text-sm text-gray-500">
+                {formatLastUpdate(lastUpdate)}
+              </Text>
+            </View>
+          )}
+          {authData.driverStatus === 'approved' && <ApprovedHeader />}
           {authData.driverStatus !== 'submitted' &&
             authData.driverStatus !== 'approved' && (
               <>
@@ -248,15 +260,14 @@ export default function ProfileSetup4() {
 
           {/* Show action buttons based on driver status */}
           <View className="mx-2 mt-8 space-y-4">
-            {authData.driverStatus === 'approved' &&
-              authData.driverStatusSuccessConfirmed != 'confirmed' && (
-                <ActionButton
-                  onPress={handleConfirmation}
-                  icon="checkmark"
-                  text={isConfirming ? 'Memproses...' : 'Mulai Menerima Order'}
-                  color={isConfirming ? 'bg-blue-400' : 'bg-blue-600'}
-                />
-              )}
+            {authData.driverStatus === 'approved' && (
+              <ActionButton
+                onPress={handleConfirmation}
+                icon="checkmark"
+                text={isConfirming ? 'Memproses...' : 'Mulai Menerima Order'}
+                color={isConfirming ? 'bg-blue-400' : 'bg-blue-600'}
+              />
+            )}
             {authData.driverStatus !== 'submitted' &&
               authData.driverStatus !== 'approved' && (
                 <ActionButton

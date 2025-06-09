@@ -36,7 +36,8 @@
     "test:ci": "npm run test --coverage",
     "test:watch": "npm run test --watch",
     "install-maestro": "curl -Ls 'https://get.maestro.mobile.dev' | bash",
-    "e2e-test": "maestro test .maestro/ -e APP_ID=com.obytes.development"
+    "e2e-test": "maestro test .maestro/ -e APP_ID=com.obytes.development",
+    "build:ios": "npx expo export:embed --entry-file='node_modules/expo-router/entry.js' --bundle-output='./ios/main.jsbundle' --dev=false --platform='ios'"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
