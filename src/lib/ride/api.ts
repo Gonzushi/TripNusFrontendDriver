@@ -1,4 +1,4 @@
-// import { API_URL } from './constants';
+import { API_URL } from './constants';
 import {
   type ApiRequestResponse,
   type RideData,
@@ -6,7 +6,7 @@ import {
   type UpdateRideSuccessResponse,
 } from './types';
 
-const API_URL = 'http://192.168.100.221:3000';
+// const API_URL = 'http://192.168.100.221:3000';
 
 const apiRequest = async <T>(
   endpoint: string,
@@ -25,8 +25,6 @@ const apiRequest = async <T>(
     });
 
     const apiOutput = await response.json();
-
-    console.log('apiOutput', apiOutput);
 
     return {
       data: response.ok ? (apiOutput.data as T) : null,
@@ -79,6 +77,65 @@ export const confirmRide = async (
     {
       method: 'POST',
       body: JSON.stringify({ ride_id: rideId, driver_id: driverId }),
+    },
+    token
+  );
+};
+
+export const rejectRide = async (
+  token: string,
+  rideId: string,
+  driverId: string
+): Promise<ApiRequestResponse<UpdateRideSuccessResponse>> => {
+  return apiRequest<UpdateRideSuccessResponse>(
+    '/ride/reject',
+    {
+      method: 'POST',
+      body: JSON.stringify({ ride_id: rideId, driver_id: driverId }),
+    },
+    token
+  );
+};
+
+export const cancelRideByRider = async (
+  token: string,
+  rideId: string,
+  riderId: string
+): Promise<ApiRequestResponse<UpdateRideSuccessResponse>> => {
+  return apiRequest<UpdateRideSuccessResponse>(
+    '/ride/cancel-by-rider-before-pickup',
+    {
+      method: 'POST',
+      body: JSON.stringify({ ride_id: rideId, rider_id: riderId }),
+    },
+    token
+  );
+};
+
+export const cancelRideByDriver = async (
+  token: string,
+  rideId: string,
+  driverId: string
+): Promise<ApiRequestResponse<UpdateRideSuccessResponse>> => {
+  return apiRequest<UpdateRideSuccessResponse>(
+    '/ride/cancel-by-driver',
+    {
+      method: 'POST',
+      body: JSON.stringify({ ride_id: rideId, driver_id: driverId }),
+    },
+    token
+  );
+};
+
+export const getActiveRideByDriver = async (
+  token: string,
+  driverId: string
+): Promise<ApiRequestResponse<RideData>> => {
+  return apiRequest<RideData>(
+    '/ride/active-ride-by-driver',
+    {
+      method: 'POST',
+      body: JSON.stringify({ driverId: driverId }),
     },
     token
   );

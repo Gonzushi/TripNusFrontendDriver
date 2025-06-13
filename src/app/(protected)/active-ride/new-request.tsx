@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   ScrollView,
@@ -17,11 +18,10 @@ import Animated, {
 
 import { AuthContext } from '@/lib/auth';
 import { type RideRequestData } from '@/lib/notification-handler/types';
-import { confirmRide } from '@/lib/ride/api';
+import { confirmRide, rejectRide } from '@/lib/ride/api';
 import { SafeView } from '@/lib/safe-view';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const TIMER_DURATION = 60;
 
 type NewRideRequestParams = {
   data: string;
@@ -33,6 +33,7 @@ export default function NewRideRequest() {
   const { authData } = useContext(AuthContext);
   const router = useRouter();
   const params = useLocalSearchParams<NewRideRequestParams>();
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!params.data) {
     router.back();
@@ -43,7 +44,11 @@ export default function NewRideRequest() {
   const pickupDistanceKm = parseFloat(params.pickupDistance);
   const pickupDurationSec = parseInt(params.pickupDuration, 10);
 
-  const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
+  const initialTimeLeft = Math.max(
+    0,
+    Math.ceil((data.request_expired_at - Date.now()) / 1000)
+  );
+  const [timeLeft, setTimeLeft] = useState(initialTimeLeft);
   const timerProgress = useSharedValue(1);
 
   const fareAfterPlatformFee = data.fare - data.platform_fee;
@@ -51,61 +56,81 @@ export default function NewRideRequest() {
     ((fareAfterPlatformFee - data.driver_earning) / fareAfterPlatformFee) * 100;
 
   useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = Date.now();
+      const remaining = Math.max(
+        0,
+        Math.ceil((data.request_expired_at - now) / 1000)
+      );
+      setTimeLeft(remaining);
+      return remaining;
+    };
+
+    // Initial calculation
+    const totalDuration = Math.ceil(
+      (data.request_expired_at - Date.now()) / 1000
+    );
+
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleReject();
-          return 0;
-        }
-        return prev - 1;
-      });
+      const remaining = calculateTimeLeft();
+      if (remaining <= 0) {
+        clearInterval(timer);
+        handleReject();
+      }
     }, 1000);
 
     const startTime = Date.now();
     const animate = () => {
       const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, TIMER_DURATION * 1000 - elapsed);
-      timerProgress.value = remaining / (TIMER_DURATION * 1000);
+      const remaining = Math.max(0, totalDuration * 1000 - elapsed);
+      timerProgress.value = remaining / (totalDuration * 1000);
       if (remaining > 0) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [data.request_expired_at]);
 
   const handleAccept = async () => {
-    const { error } = await confirmRide(
-      authData!.session.access_token,
-      data.ride_id,
-      authData!.driverId!
-    );
+    if (isLoading) return;
 
-    if (!error) {
-      Alert.alert(
-        'Berhasil',
-        'Perjalanan berhasil dikonfirmasi.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
-          },
-        ],
-        { cancelable: false }
+    setIsLoading(true);
+    try {
+      const { error } = await confirmRide(
+        authData!.session.access_token,
+        data.ride_id,
+        authData!.driverId!
       );
-    } else {
-      let message = 'Terjadi kesalahan saat mengkonfirmasi perjalanan.';
 
-      if (
-        error === 'Ride has already been taken.' ||
-        error?.includes('RIDE_ALREADY_TAKEN')
-      ) {
-        message = 'Perjalanan sudah diambil oleh driver lain.';
+      if (!error) {
+        // Navigate to ride details without passing data
+        router.replace('/active-ride/ride-details');
+      } else {
+        let message = 'Terjadi kesalahan saat mengkonfirmasi perjalanan.';
+
+        if (
+          error === 'Ride has already been taken.' ||
+          error?.includes('RIDE_ALREADY_TAKEN')
+        ) {
+          message = 'Perjalanan sudah diambil oleh driver lain.';
+        }
+
+        Alert.alert(
+          'Gagal',
+          message,
+          [
+            {
+              text: 'OK',
+              onPress: () => router.back(),
+            },
+          ],
+          { cancelable: false }
+        );
       }
-
+    } catch {
       Alert.alert(
         'Gagal',
-        message,
+        'Terjadi kesalahan saat mengkonfirmasi perjalanan.',
         [
           {
             text: 'OK',
@@ -114,12 +139,52 @@ export default function NewRideRequest() {
         ],
         { cancelable: false }
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleReject = () => {
-    console.log('❌ Ride rejected');
-    router.back();
+  const handleReject = async () => {
+    if (isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await rejectRide(
+        authData!.session.access_token,
+        data.ride_id,
+        authData!.driverId!
+      );
+
+      if (error) {
+        Alert.alert(
+          'Gagal',
+          'Terjadi kesalahan saat menolak perjalanan.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.back(),
+            },
+          ],
+          { cancelable: false }
+        );
+      } else {
+        router.back();
+      }
+    } catch {
+      Alert.alert(
+        'Gagal',
+        'Terjadi kesalahan saat menolak perjalanan.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ],
+        { cancelable: false }
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const timerStyle = useAnimatedStyle(() => ({
@@ -174,19 +239,33 @@ export default function NewRideRequest() {
           <View className="mt-4 flex-row gap-4">
             <TouchableOpacity
               onPress={handleReject}
-              className="flex-1 rounded-xl border border-red-200 bg-red-50 py-4"
+              disabled={isLoading}
+              className={`flex-1 rounded-xl border border-red-200 bg-red-50 py-4 ${
+                isLoading ? 'opacity-50' : ''
+              }`}
             >
-              <Text className="text-center font-medium text-red-600">
-                Tidak Terima
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator color="#DC2626" />
+              ) : (
+                <Text className="text-center font-medium text-red-600">
+                  Tidak Terima
+                </Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleAccept}
-              className="flex-1 rounded-xl border border-green-200 bg-green-50 py-4"
+              disabled={isLoading}
+              className={`flex-1 rounded-xl border border-green-200 bg-green-50 py-4 ${
+                isLoading ? 'opacity-50' : ''
+              }`}
             >
-              <Text className="text-center font-medium text-green-600">
-                Terima
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator color="#059669" />
+              ) : (
+                <Text className="text-center font-medium text-green-600">
+                  Terima
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -263,7 +342,7 @@ export default function NewRideRequest() {
           </View>
 
           {/* Earnings Breakdown */}
-          <View className="mt-8 w-full rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <View className="my-8 w-full rounded-2xl border border-blue-100 bg-blue-50 p-4">
             <Text className="mb-4 font-semibold text-gray-900">
               Rincian Pendapatan
             </Text>

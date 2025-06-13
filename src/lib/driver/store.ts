@@ -20,6 +20,7 @@ type DriverStore = {
   lastSync: number;
   isLoading: boolean;
   checkInitialOnlineStatus: boolean;
+  availability_status: string | null;
   setAccessToken: (token: string) => void;
   setDriverId: (id: string) => void;
   setVehicleType: (type: string) => void;
@@ -71,6 +72,7 @@ export const useDriverStore = create<DriverStore>((set, get) => {
     lastSync: 0,
     isLoading: false,
     checkInitialOnlineStatus: true,
+    availability_status: 'available',
     setAccessToken: (token) => set({ accessToken: token }),
     setDriverId: (id) => set({ driverId: id }),
     setVehicleType: (type) => set({ driverVehicleType: type }),
@@ -176,6 +178,9 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         await set({ lastSync: now, checkInitialOnlineStatus: true });
 
         const response = await getDriverProfileApi(state.accessToken);
+        
+        await set({ availability_status: response.data?.availability_status });
+
         if (response.data?.is_online === true && state.isOnline === false) {
           if (
             state.driverId &&

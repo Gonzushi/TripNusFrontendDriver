@@ -28,6 +28,33 @@ export type RideStatus =
 export type VehicleType = 'motorcycle' | 'car';
 export type ServiceVariant = 'standard' | 'premium';
 
+export type MatchAttempt = {
+  retry_count: number;
+  attempted_at: number;
+  message_data: {
+    fare: number;
+    type: string;
+    pickup: {
+      coords: [number, number];
+      address: string;
+    };
+    dropoff: {
+      coords: [number, number];
+      address: string;
+    };
+    ride_id: string;
+    distance_m: number;
+    duration_s: number;
+    platform_fee: number;
+    app_commission: number;
+    driver_earning: number;
+    fare_breakdown: FareBreakdown;
+    request_expired_at: number;
+    distance_to_pickup_km: number;
+  };
+  attemptedDrivers: string[];
+};
+
 export type RideData = {
   id: string;
   rider_id: string;
@@ -52,6 +79,8 @@ export type RideData = {
   planned_dropoff_address: string;
   actual_pickup_coords: Point | null;
   actual_dropoff_coords: Point | null;
+  match_attempt?: MatchAttempt;
+  status_reason: string | null;
 };
 
 export type UpdateRidePayload = {
@@ -84,4 +113,18 @@ export type UpdateRideErrorResponse = {
 export type ApiRequestResponse<T> = {
   data: T | null;
   error: string | null;
+};
+
+export type RideResponse = {
+  status: number;
+  code: string;
+  message: string;
+  data: RideData;
+};
+
+export type RideErrorResponse = {
+  status: number;
+  code: string;
+  message: string;
+  error: string;
 };

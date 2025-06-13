@@ -23,6 +23,7 @@ export type RideRequestData = {
     coords: [number, number];
     address: string;
   };
+  request_expired_at: number;
 };
 
 export type CancelRideData = {

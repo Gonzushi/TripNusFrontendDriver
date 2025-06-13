@@ -1,5 +1,8 @@
-export const debugLog = (debugMode: boolean, message: string) => {
+export const debugLog = (
+  debugMode: boolean,
+  ...args: Parameters<typeof console.log>
+) => {
   if (debugMode) {
-    console.log(message);
+    console.log(...args);
   }
 };

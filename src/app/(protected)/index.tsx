@@ -158,10 +158,10 @@ function OnlineStatusToggle({
   hasLocationPermission: boolean;
   isLoading: boolean;
 }) {
-  // Animation value for smooth color transition
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [visualState, setVisualState] = useState(isOnline);
-  const { checkInitialOnlineStatus } = useDriverStore();
+  const { checkInitialOnlineStatus, availability_status } = useDriverStore();
+  const router = useRouter();
 
   // Update animation when status changes
   useEffect(() => {
@@ -178,6 +178,11 @@ function OnlineStatusToggle({
   }, [isOnline]);
 
   const handlePress = () => {
+    if (availability_status === 'busy') {
+      router.push('/active-ride/ride-details');
+      return;
+    }
+
     if (!hasLocationPermission && !visualState) {
       Alert.alert(
         'Izin Lokasi Diperlukan',
@@ -207,6 +212,7 @@ function OnlineStatusToggle({
   };
 
   const getBackgroundColor = () => {
+    if (availability_status === 'busy') return '#059669'; // green-600
     if (checkInitialOnlineStatus) return '#D1D5DB'; // gray-300 during initial check
     if (isDisabled) return '#D1D5DB'; // gray-300
     if (isLoading) {
@@ -214,6 +220,18 @@ function OnlineStatusToggle({
     } else {
       return visualState ? '#EF4444' : '#2563EB'; // red-500 : blue-600
     }
+  };
+
+  const getButtonText = () => {
+    if (availability_status === 'busy') return 'Sedang Menjalani Order';
+    if (isLoading || checkInitialOnlineStatus) {
+      return checkInitialOnlineStatus
+        ? 'Memeriksa Status...'
+        : !visualState
+          ? 'Menonaktifkan...'
+          : 'Mengaktifkan...';
+    }
+    return visualState ? 'Berhenti Menerima Order' : 'Mulai Menerima Order';
   };
 
   return (
@@ -248,25 +266,25 @@ function OnlineStatusToggle({
               <View className="flex-row items-center">
                 <ActivityIndicator color="white" style={{ marginRight: 8 }} />
                 <Text className="text-base font-semibold text-white">
-                  {checkInitialOnlineStatus
-                    ? 'Memeriksa Status...'
-                    : !visualState
-                      ? 'Menonaktifkan...'
-                      : 'Mengaktifkan...'}
+                  {getButtonText()}
                 </Text>
               </View>
             ) : (
               <>
                 <Ionicons
-                  name={visualState ? 'power' : 'power-outline'}
+                  name={
+                    availability_status === 'busy'
+                      ? 'car'
+                      : visualState
+                        ? 'power'
+                        : 'power-outline'
+                  }
                   size={20}
                   color="white"
                   style={{ marginRight: 8 }}
                 />
                 <Text className="text-base font-semibold text-white">
-                  {visualState
-                    ? 'Berhenti Menerima Order'
-                    : 'Mulai Menerima Order'}
+                  {getButtonText()}
                 </Text>
               </>
             )}
