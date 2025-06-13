@@ -7,12 +7,13 @@ import Env from '@/lib/env';
 const EAS_PROJECT_ID = Env.EAS_PROJECT_ID;
 
 // Define the background notification task handler
-Notifications.registerTaskAsync('background-notification-task');
+Notifications.registerTaskAsync(
+  'expo.notifications.BACKGROUND_NOTIFICATION_TASK'
+);
 
 // Configure how notifications should be presented when the app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -75,6 +76,7 @@ export async function registerForPushNotificationsAsync() {
       token = await Notifications.getExpoPushTokenAsync({
         projectId: EAS_PROJECT_ID,
       });
+
       console.log('Successfully got push token:', token);
     } else {
       console.log('Must use physical device for Push Notifications');

@@ -35,6 +35,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'TripNus memerlukan akses ke galeri foto Anda untuk mengupload dokumen seperti KTP, SIM, dan STNK.',
       NSCameraUsageDescription:
         'TripNus memerlukan akses ke kamera Anda untuk mengambil foto dokumen seperti KTP, SIM, dan STNK.',
+      BGTaskSchedulerPermittedIdentifiers: [
+        'driver-alive-task',
+        'background-location-task',
+      ],
     },
   },
   android: {
@@ -57,6 +61,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'ACCESS_BACKGROUND_LOCATION',
       'ACCESS_COARSE_LOCATION',
       'ACCESS_FINE_LOCATION',
+      'android.permission.RECEIVE_BOOT_COMPLETED',
+      'android.permission.WAKE_LOCK',
+      'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
     ],
   },
   web: {

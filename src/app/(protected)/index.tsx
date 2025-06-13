@@ -1,9 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Animated,
   AppState,
   type AppStateStatus,
   Image,
@@ -52,7 +60,7 @@ const consoleLogStore = {
 
 // Override console.log to capture logs
 const originalConsoleLog = console.log;
-console.log = (...args: any[]) => {
+console.log = (...args: Parameters<typeof console.log>) => {
   const message = args.map(String).join(' ');
   consoleLogStore.addLog(message);
   originalConsoleLog(...args);
@@ -142,14 +150,35 @@ function OnlineStatusToggle({
   onToggle,
   isDisabled,
   hasLocationPermission,
+  isLoading,
 }: {
   isOnline: boolean;
   onToggle: () => void;
   isDisabled: boolean;
   hasLocationPermission: boolean;
+  isLoading: boolean;
 }) {
+  // Animation value for smooth color transition
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [visualState, setVisualState] = useState(isOnline);
+  const { checkInitialOnlineStatus } = useDriverStore();
+
+  // Update animation when status changes
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: isLoading ? 0.8 : 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isLoading]);
+
+  // Update visual state with animation
+  useEffect(() => {
+    setVisualState(isOnline);
+  }, [isOnline]);
+
   const handlePress = () => {
-    if (!hasLocationPermission && !isOnline) {
+    if (!hasLocationPermission && !visualState) {
       Alert.alert(
         'Izin Lokasi Diperlukan',
         'Untuk dapat menerima orderan, TripNus Driver memerlukan akses lokasi "Selalu Diizinkan". Silakan ubah pengaturan lokasi di pengaturan perangkat Anda.',
@@ -172,29 +201,77 @@ function OnlineStatusToggle({
       );
       return;
     }
+    // Update visual state immediately for smooth transition
+    setVisualState(!visualState);
     onToggle();
+  };
+
+  const getBackgroundColor = () => {
+    if (checkInitialOnlineStatus) return '#D1D5DB'; // gray-300 during initial check
+    if (isDisabled) return '#D1D5DB'; // gray-300
+    if (isLoading) {
+      return !visualState ? '#EF4444' : '#2563EB'; // red-500 : blue-600
+    } else {
+      return visualState ? '#EF4444' : '#2563EB'; // red-500 : blue-600
+    }
   };
 
   return (
     <View className="mt-4">
       <View className="px-4">
-        <TouchableOpacity
-          onPress={handlePress}
-          disabled={isDisabled}
-          className={`flex-row items-center justify-center rounded-xl py-4 ${
-            isDisabled ? 'bg-gray-300' : isOnline ? 'bg-red-500' : 'bg-blue-600'
-          }`}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [
+              {
+                scale: fadeAnim.interpolate({
+                  inputRange: [0.8, 1],
+                  outputRange: [0.98, 1],
+                }),
+              },
+            ],
+          }}
         >
-          <Ionicons
-            name={isOnline ? 'power' : 'power-outline'}
-            size={20}
-            color="white"
-            className="mr-2"
-          />
-          <Text className="ml-2 text-base font-semibold text-white">
-            {isOnline ? 'Berhenti Menerima Order' : 'Mulai Menerima Order'}
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handlePress}
+            disabled={isDisabled || isLoading || checkInitialOnlineStatus}
+            style={{
+              backgroundColor: getBackgroundColor(),
+              borderRadius: 12,
+              paddingVertical: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {isLoading || checkInitialOnlineStatus ? (
+              <View className="flex-row items-center">
+                <ActivityIndicator color="white" style={{ marginRight: 8 }} />
+                <Text className="text-base font-semibold text-white">
+                  {checkInitialOnlineStatus
+                    ? 'Memeriksa Status...'
+                    : !visualState
+                      ? 'Menonaktifkan...'
+                      : 'Mengaktifkan...'}
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Ionicons
+                  name={visualState ? 'power' : 'power-outline'}
+                  size={20}
+                  color="white"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-base font-semibold text-white">
+                  {visualState
+                    ? 'Berhenti Menerima Order'
+                    : 'Mulai Menerima Order'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </View>
   );
@@ -212,6 +289,9 @@ function Header({
   onProfilePress: () => void;
   isOnline: boolean;
 }) {
+  // Use a ref to store the timestamp to prevent unnecessary re-renders
+  const timestampRef = useRef(Date.now());
+
   return (
     <View className="px-4 pb-4 pt-6">
       <View className="flex-row items-center justify-between">
@@ -254,7 +334,7 @@ function Header({
                 className="h-full w-full"
                 resizeMode="cover"
                 source={{
-                  uri: `${profilePictureUri}?timestamp=${Date.now()}`,
+                  uri: `${profilePictureUri}?timestamp=${timestampRef.current}`,
                   cache: 'reload',
                 }}
               />
@@ -387,70 +467,96 @@ export default function Index() {
   const [hasLocationPermission, setHasLocationPermission] = useState(true);
   const {
     isOnline,
+    isLoading,
     walletBalance,
+    checkInitialOnlineStatus,
+    setAccessToken,
     setOnline,
     setDriverId,
     setVehicleType,
     setVehiclePlateNumber,
+    syncOnlineStatus,
+    setIsLoading,
   } = useDriverStore();
 
   const checkLocationPermissions = async () => {
-    const { status: foregroundStatus } =
+    let { status: foregroundStatus } =
       await Location.getForegroundPermissionsAsync();
-    const { status: backgroundStatus } =
+
+    if (foregroundStatus !== 'granted') {
+      const requestForeground =
+        await Location.requestForegroundPermissionsAsync();
+      foregroundStatus = requestForeground.status;
+    }
+
+    let { status: backgroundStatus } =
       await Location.getBackgroundPermissionsAsync();
 
-    if (Platform.OS === 'ios') {
-      const backgroundPermission =
-        await Location.getBackgroundPermissionsAsync();
-      const hasPermission =
-        foregroundStatus === 'granted' &&
-        backgroundStatus === 'granted' &&
-        backgroundPermission.status === 'granted';
-      setHasLocationPermission(hasPermission);
+    if (foregroundStatus === 'granted' && backgroundStatus !== 'granted') {
+      const requestBackground =
+        await Location.requestBackgroundPermissionsAsync();
+      backgroundStatus = requestBackground.status;
+    }
 
-      // If permissions are denied and driver is online, turn them offline
-      if (!hasPermission && isOnline) {
-        setOnline(false);
-      }
-    } else {
-      const hasPermission =
-        foregroundStatus === 'granted' && backgroundStatus === 'granted';
-      setHasLocationPermission(hasPermission);
+    const hasPermission =
+      foregroundStatus === 'granted' && backgroundStatus === 'granted';
 
-      // If permissions are denied and driver is online, turn them offline
-      if (!hasPermission && isOnline) {
-        setOnline(false);
-      }
+    setHasLocationPermission(hasPermission);
+
+    if (!hasPermission && isOnline) {
+      await setOnline(false);
     }
   };
 
-  // Check permissions when app comes to foreground
+  // Check permissions and sync status when app comes to foreground
   useEffect(() => {
+    let isMounted = true;
+
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active' && isMounted) {
+        await checkLocationPermissions();
+        await syncOnlineStatus();
+      }
+    };
+
     const subscription = AppState.addEventListener(
       'change',
-      (nextAppState: AppStateStatus) => {
-        if (nextAppState === 'active') {
-          checkLocationPermissions();
-        }
-      }
+      handleAppStateChange
     );
 
+    // Initial sync
+    handleAppStateChange('active');
+
     return () => {
+      isMounted = false;
       subscription.remove();
     };
-  }, [isOnline]);
+  }, []); // Remove isOnline from dependencies
 
-  // Check permissions when screen is focused
+  // Check permissions and sync status when screen is focused
   useFocusEffect(
     useCallback(() => {
-      checkLocationPermissions();
+      let isMounted = true;
+
+      const syncStatus = async () => {
+        if (isMounted) {
+          await checkLocationPermissions();
+          await syncOnlineStatus();
+        }
+      };
+
+      syncStatus();
+
+      return () => {
+        isMounted = false;
+      };
     }, [])
   );
 
   // Initialize driver ID
   useEffect(() => {
     if (authData?.driverId) {
+      setAccessToken(authData.session.access_token);
       setDriverId(authData.driverId);
       setVehicleType(authData.driverVehicleType!);
       setVehiclePlateNumber(authData.driverVehiclePlateNumber!);
@@ -471,6 +577,7 @@ export default function Index() {
 
   // Event handlers
   const handleToggleOnline = async () => {
+    setIsLoading(true);
     if (!isOnline) {
       // Check location permission when turning online
       await checkLocationPermissions();
@@ -500,7 +607,7 @@ export default function Index() {
       }
     }
 
-    setOnline(!isOnline);
+    await setOnline(!isOnline);
   };
 
   const handleInvite = async () => {
@@ -535,7 +642,7 @@ export default function Index() {
           firstName={authData?.firstName || 'Teman'}
           profilePictureUri={profilePictureUri}
           onProfilePress={handleProfilePress}
-          isOnline={isOnline}
+          isOnline={isOnline && !checkInitialOnlineStatus}
         />
 
         <WalletBalance balance={walletBalance} />
@@ -547,6 +654,7 @@ export default function Index() {
           onToggle={handleToggleOnline}
           isDisabled={walletBalance < 0}
           hasLocationPermission={hasLocationPermission}
+          isLoading={isLoading}
         />
 
         {!hasLocationPermission && (

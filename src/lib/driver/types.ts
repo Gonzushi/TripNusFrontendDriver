@@ -4,15 +4,6 @@ export type ProfileFormData = {
   phoneNumber: string;
 };
 
-export type UpdateProfileResponse = {
-  status: number;
-  message?: string;
-  data?: {
-    first_name: string;
-    last_name: string | null;
-  };
-};
-
 export type UpdatePhoneResponse = {
   status: number;
   message?: string;
@@ -83,8 +74,13 @@ export type UpdateDriverProfileData = {
   vehicle_registration_no?: string;
   vehicle_year?: string;
   status?: RegistrationStatus | string;
-  status_success_confirmed?: string;
   notes?: string;
+  push_token?: string;
+  is_online?: boolean;
+  is_suspended?: boolean;
+  availability_status?: string;
+  decline_count?: number;
+  missed_requests?: number;
 };
 
 export type UpdateDriverProfileResponse = {
@@ -97,13 +93,6 @@ export type UpdateDriverProfileResponse = {
 
 export type UpdateFcmTokenRequest = {
   fcm_token: string;
-};
-
-export type UpdateFcmTokenResponse = {
-  status: number;
-  message?: string;
-  code?: string;
-  error?: string;
 };
 
 // Generic error response type

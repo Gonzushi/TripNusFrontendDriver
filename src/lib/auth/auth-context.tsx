@@ -13,9 +13,7 @@ import {
   downloadAndSaveProfilePicture,
 } from '@/lib/profile-picture';
 
-import { stopBackgroundUpdates } from '../background/location-service';
 import { useDriverStore } from '../driver/store';
-import { webSocketService } from '../websocket/websocket-service';
 import {
   changePasswordApi,
   forgotPasswordApi,
@@ -76,9 +74,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     data: AuthData
   ): Promise<AuthData | null> => {
     const now = Math.floor(Date.now() / 1000);
+
     if (data.session.expires_at > now) return data;
 
     const newData = await refreshTokenApi(data.session.refresh_token);
+
     if (newData) {
       await updateAuthState({ isLoggedIn: true, data: newData });
     } else {
@@ -240,6 +240,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const value = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
         if (value) {
           const storedState = JSON.parse(value);
+
           if (storedState.isLoggedIn && storedState.data) {
             const validData = await checkAndRefreshToken(storedState.data);
             await updateAuthState({
@@ -252,8 +253,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         console.error('Error initializing auth:', error);
       }
       setIsReady(true);
-      await stopBackgroundUpdates();
-      webSocketService.disconnect();
     };
 
     initializeAuth();

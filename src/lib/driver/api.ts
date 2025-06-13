@@ -4,34 +4,11 @@ import {
   type CreateRiderResponse,
   type UpdateDriverProfileData,
   type UpdateDriverProfileResponse,
-  type UpdateFcmTokenResponse,
   type UpdatePhoneResponse,
-  type UpdateProfileResponse,
   type UploadPhotoResponse,
 } from './types';
 
 const API_BASE_URL = Env.API_URL;
-
-export const updateProfileApi = async (
-  accessToken: string,
-  firstName: string,
-  lastName?: string
-): Promise<UpdateProfileResponse> => {
-  const response = await fetch(`${API_BASE_URL}/user/profile`, {
-    method: 'PATCH',
-    headers: {
-      accept: 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      first_name: firstName.trim(),
-      last_name: lastName?.trim() || undefined,
-    }),
-  });
-
-  return response.json();
-};
 
 export const updatePhoneApi = async (
   accessToken: string,
@@ -65,8 +42,6 @@ export const createDriverProfileApi = async (
 
   return response.json();
 };
-
-// New API functions
 
 export const uploadDriverPhotoApi = async (
   accessToken: string,
@@ -103,18 +78,13 @@ export const updateDriverProfileApi = async (
   return response.json();
 };
 
-export const updateFcmTokenApi = async (
-  accessToken: string,
-  fcmToken: string
-): Promise<UpdateFcmTokenResponse> => {
-  const response = await fetch(`${API_BASE_URL}/drivers/fcm-token`, {
-    method: 'PATCH',
+export const getDriverProfileApi = async (accessToken: string) => {
+  const response = await fetch(`${API_BASE_URL}/driver/profile`, {
+    method: 'GET',
     headers: {
       accept: 'application/json',
       Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ fcm_token: fcmToken }),
   });
 
   return response.json();

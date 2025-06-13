@@ -1,7 +1,10 @@
 import * as Location from 'expo-location';
 
-const BACKGROUND_LOCATION_TASK = 'background-location-task';
-const LOCATION_UPDATE_INTERVAL = 5 * 1000; // 1 minute in milliseconds
+import {
+  BACKGROUND_LOCATION_TASK,
+  DISTANCE_UPDATE_INTERVAL,
+  LOCATION_UPDATE_INTERVAL,
+} from './constants';
 
 // Request location permissions from the user
 export async function requestPermissions(): Promise<boolean> {
@@ -34,27 +37,45 @@ export async function startBackgroundUpdates(): Promise<boolean> {
     const hasPermissions = await requestPermissions();
     if (!hasPermissions) return false;
 
-    // Check if the task is already running
-    const hasStarted = await Location.hasStartedLocationUpdatesAsync(
+    // Check if the tasks are already running
+    const hasLocationStarted = await Location.hasStartedLocationUpdatesAsync(
       BACKGROUND_LOCATION_TASK
     ).catch(() => false);
 
-    if (hasStarted) {
+    // Start location updates if not running
+    if (!hasLocationStarted) {
+      // Start location updates with optimized settings
+      await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+        // Use high accuracy when app is in foreground, balanced in background
+        accuracy: Location.Accuracy.Balanced,
+
+        // Time and distance intervals
+        timeInterval: LOCATION_UPDATE_INTERVAL,
+        distanceInterval: DISTANCE_UPDATE_INTERVAL,
+
+        // Optimize for battery life
+        activityType: Location.ActivityType.AutomotiveNavigation,
+        showsBackgroundLocationIndicator: true,
+
+        // Defer updates slightly to batch them - iOS only
+        deferredUpdatesInterval: LOCATION_UPDATE_INTERVAL,
+        deferredUpdatesDistance: DISTANCE_UPDATE_INTERVAL,
+
+        // Prevent unnecessary app state changes
+        pausesUpdatesAutomatically: false,
+
+        foregroundService: {
+          notificationTitle: 'Pembaruan Lokasi',
+          notificationBody: 'Melacak lokasi pengemudi di latar belakang',
+          notificationColor: '#2563eb', // Blue color for visibility
+        },
+      });
+
+      console.log('✅ Background location task started');
+    } else {
       console.log('✅ Background location task is already running');
-      return true;
     }
 
-    // Start location updates
-    await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-      accuracy: Location.Accuracy.Balanced,
-      timeInterval: LOCATION_UPDATE_INTERVAL,
-      foregroundService: {
-        notificationTitle: 'Pembaruan Lokasi',
-        notificationBody: 'Melacak lokasi pengemudi di latar belakang',
-      },
-    });
-
-    console.log('✅ Background location task started');
     return true;
   } catch (error) {
     console.error('❌ Error starting background updates:', error);
@@ -65,16 +86,27 @@ export async function startBackgroundUpdates(): Promise<boolean> {
 // Stop background location updates
 export async function stopBackgroundUpdates(): Promise<void> {
   try {
-    const hasStarted = await Location.hasStartedLocationUpdatesAsync(
+    // Check if the task exists before trying to stop it
+    const hasLocationStarted = await Location.hasStartedLocationUpdatesAsync(
       BACKGROUND_LOCATION_TASK
     ).catch(() => false);
 
-    if (hasStarted) {
-      // Unregister the task
+    if (hasLocationStarted) {
       await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-      console.log('✅ Background location task stopped');
+      console.log('❌ Background location task stopped');
+    } else {
+      console.log('✅ Background location task was already stopped');
     }
   } catch (error) {
-    console.error('❌ Error stopping background updates:', error);
+    // Check if this is a task-not-found error, which we can safely ignore
+    const errorMessage = String(error);
+    if (
+      errorMessage.includes('TaskNotFoundException') ||
+      errorMessage.includes('Task not found')
+    ) {
+      console.log('✅ Background location task was already stopped');
+    } else {
+      console.error('❌ Error stopping background updates:', error);
+    }
   }
 }
