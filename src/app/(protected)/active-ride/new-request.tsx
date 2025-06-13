@@ -75,7 +75,7 @@ export default function NewRideRequest() {
       const remaining = calculateTimeLeft();
       if (remaining <= 0) {
         clearInterval(timer);
-        handleReject();
+        router.back();
       }
     }, 1000);
 
@@ -364,11 +364,13 @@ export default function NewRideRequest() {
                 value={-data.app_commission}
                 isNegative
               />
-              <BreakdownItem
-                label="Total Pendapatan Driver"
-                value={data.driver_earning}
-                isBold
-              />
+              <View className="mt-4 justify-between border-t border-blue-200 pt-4">
+                <BreakdownItem
+                  label="Total Pendapatan Driver"
+                  value={data.driver_earning}
+                  isBold
+                />
+              </View>
             </View>
           </View>
         </ScrollView>

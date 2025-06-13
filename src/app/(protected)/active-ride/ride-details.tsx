@@ -1,10 +1,17 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Linking,
   ScrollView,
   Text,
@@ -57,46 +64,45 @@ export default function RideDetails() {
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
     null
   );
-  const [locationPermission, setLocationPermission] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [isNearPickup, setIsNearPickup] = useState(false);
+  const [isFollowingDriver, setIsFollowingDriver] = useState(false);
+  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
+    null
+  );
 
   const mapRef = useRef<MapView | null>(null);
+  const hasInitializedMap = useRef(false);
 
-  // Location permission and tracking setup
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status === 'granted');
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Please enable location services to track your ride.',
-          [{ text: 'OK' }]
-        );
-      }
-    })();
+  // Add cleanup function
+  const stopLocationTracking = useCallback(() => {
+    if (locationSubscriptionRef.current) {
+      locationSubscriptionRef.current.remove();
+      locationSubscriptionRef.current = null;
+    }
   }, []);
 
-  // Location tracking
-  useEffect(() => {
-    let locationSubscription: Location.LocationSubscription;
+  // Update startLocationTracking to store the subscription
+  const startLocationTracking = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
-    const startLocationTracking = async () => {
-      if (!locationPermission) return;
-      try {
+      if (status === 'granted') {
+        // Get initial location with lower accuracy for battery saving
         const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
+          accuracy: Location.Accuracy.Low,
         });
         setDriverLocation({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         });
 
-        locationSubscription = await Location.watchPositionAsync(
+        const subscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.High,
-            timeInterval: 5000,
-            distanceInterval: 10,
+            accuracy: Location.Accuracy.Low, // Use low accuracy for battery saving
+            timeInterval: 120 * 1000, // 2 minutes
+            distanceInterval: 100, // 100 meters
+            mayShowUserSettingsDialog: false, // Don't show settings dialog
           },
           (location) => {
             const newLocation = {
@@ -105,8 +111,12 @@ export default function RideDetails() {
             };
             setDriverLocation(newLocation);
 
-            // Update map region to follow driver
-            if (mapRef.current) {
+            // Only update map region if following driver and app is in foreground
+            if (
+              isFollowingDriver &&
+              mapRef.current &&
+              AppState.currentState === 'active'
+            ) {
               mapRef.current.animateToRegion(
                 {
                   ...newLocation,
@@ -129,21 +139,88 @@ export default function RideDetails() {
             }
           }
         );
-      } catch (error) {
-        console.error('Error getting location:', error);
-        Alert.alert('Location Error', 'Failed to get your location.', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        locationSubscriptionRef.current = subscription;
+      } else {
+        Alert.alert(
+          'Location Permission',
+          'Location permission is optional. You can use Google Maps for navigation.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error starting location tracking:', error);
+      Alert.alert(
+        'Location Error',
+        'Failed to start location tracking. You can still use Google Maps for navigation.',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [isFollowingDriver, rideData]);
+
+  // Handle app state changes with debounce
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      // Clear any pending timeouts
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // Stop tracking immediately when going to background
+        stopLocationTracking();
+      } else if (nextAppState === 'active') {
+        // Add a small delay before starting tracking again
+        // This prevents rapid start/stop when app is quickly backgrounded/foregrounded
+        timeoutId = setTimeout(() => {
+          startLocationTracking();
+        }, 1000);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
+  }, [startLocationTracking, stopLocationTracking]);
 
+  // Start location tracking on mount
+  useEffect(() => {
     startLocationTracking();
     return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
+      stopLocationTracking();
     };
-  }, [locationPermission, rideData]);
+  }, [startLocationTracking, stopLocationTracking]);
+
+  // Initial map setup
+  useEffect(() => {
+    if (
+      !mapRef.current ||
+      !rideData ||
+      !driverLocation ||
+      hasInitializedMap.current
+    )
+      return;
+
+    const pickupCoords = rideData.planned_pickup_coords.coordinates;
+    const dropoffCoords = rideData.planned_dropoff_coords.coordinates;
+
+    mapRef.current.fitToCoordinates(
+      [
+        { latitude: pickupCoords[1], longitude: pickupCoords[0] },
+        { latitude: dropoffCoords[1], longitude: dropoffCoords[0] },
+        driverLocation,
+      ],
+      {
+        edgePadding: { top: 130, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      }
+    );
+    hasInitializedMap.current = true;
+  }, [rideData, driverLocation]);
 
   // Fetch ride data
   useEffect(() => {
@@ -175,38 +252,15 @@ export default function RideDetails() {
     fetchRideData();
   }, [authData]);
 
-  // Initial map setup
-  useEffect(() => {
-    if (
-      !mapRef.current ||
-      !rideData?.planned_pickup_coords.coordinates ||
-      !rideData?.planned_dropoff_coords.coordinates ||
-      !driverLocation
-    )
-      return;
-
-    const pickupCoords = rideData.planned_pickup_coords.coordinates;
-    const dropoffCoords = rideData.planned_dropoff_coords.coordinates;
-
-    mapRef.current.fitToCoordinates(
-      [
-        { latitude: pickupCoords[1], longitude: pickupCoords[0] },
-        { latitude: dropoffCoords[1], longitude: dropoffCoords[0] },
-        driverLocation,
-      ],
-      {
-        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-        animated: true,
-      }
-    );
-  }, [rideData, driverLocation]);
-
   const handlePickupPassenger = () => {
     // TODO: Implement pickup passenger logic
     console.log('Passenger picked up');
   };
 
-  const handleCancelRide = () => {
+  // Update cancel handler
+  const handleCancel = async () => {
+    if (!authData?.session.access_token || !rideData) return;
+
     Alert.alert(
       'Batalkan Perjalanan',
       'Apakah Anda yakin ingin membatalkan perjalanan ini?',
@@ -218,31 +272,27 @@ export default function RideDetails() {
         {
           text: 'Ya',
           onPress: async () => {
-            if (!authData?.session.access_token || !rideData) return;
-
             try {
-              const { data, error } = await cancelRideByDriver(
+              setIsCancelling(true);
+              stopLocationTracking(); // Stop location tracking when ride is cancelled
+              const { error } = await cancelRideByDriver(
                 authData.session.access_token,
                 rideData.id,
                 authData.driverId!
               );
 
-              console.log(data, error);
-
               if (error) {
-                Alert.alert(
-                  'Error',
-                  'Gagal membatalkan perjalanan. Silakan coba lagi.'
+                throw new Error(
+                  typeof error === 'string' ? error : 'Failed to cancel ride'
                 );
-                return;
               }
 
-              Alert.alert('Sukses', 'Perjalanan berhasil dibatalkan.', [
-                { text: 'OK', onPress: () => router.back() },
-              ]);
+              router.back();
             } catch (error) {
               console.error('Error cancelling ride:', error);
-              Alert.alert('Error', 'Terjadi kesalahan. Silakan coba lagi.');
+              Alert.alert('Error', 'Failed to cancel ride. Please try again.');
+            } finally {
+              setIsCancelling(false);
             }
           },
         },
@@ -366,29 +416,12 @@ export default function RideDetails() {
             </MapView>
 
             {/* Map Control Buttons */}
-            <View className="absolute bottom-4 right-4 gap-2 space-y-3">
-              <TouchableOpacity
-                className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md active:bg-gray-100"
-                onPress={() => {
-                  if (mapRef.current && driverLocation) {
-                    mapRef.current.animateToRegion(
-                      {
-                        ...driverLocation,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      },
-                      1000
-                    );
-                  }
-                }}
-              >
-                <Ionicons name="locate" size={24} color="#3B82F6" />
-              </TouchableOpacity>
-
+            <View className="absolute right-4 top-4 flex-row gap-2">
               <TouchableOpacity
                 className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md active:bg-gray-100"
                 onPress={() => {
                   if (mapRef.current) {
+                    setIsFollowingDriver(false);
                     mapRef.current.animateToRegion(
                       {
                         latitude: pickupCoords[1],
@@ -407,11 +440,11 @@ export default function RideDetails() {
                   color="#3B82F6"
                 />
               </TouchableOpacity>
-
               <TouchableOpacity
                 className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md active:bg-gray-100"
                 onPress={() => {
                   if (mapRef.current) {
+                    setIsFollowingDriver(false);
                     mapRef.current.animateToRegion(
                       {
                         latitude: dropoffCoords[1],
@@ -430,11 +463,11 @@ export default function RideDetails() {
                   color="#EF4444"
                 />
               </TouchableOpacity>
-
               <TouchableOpacity
                 className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md active:bg-gray-100"
                 onPress={() => {
                   if (mapRef.current && driverLocation) {
+                    setIsFollowingDriver(false);
                     mapRef.current.fitToCoordinates(
                       [
                         {
@@ -449,7 +482,7 @@ export default function RideDetails() {
                       ],
                       {
                         edgePadding: {
-                          top: 70,
+                          top: 130,
                           right: 50,
                           bottom: 50,
                           left: 50,
@@ -461,6 +494,24 @@ export default function RideDetails() {
                 }}
               >
                 <Ionicons name="scan" size={24} color="#3B82F6" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md active:bg-gray-100"
+                onPress={() => {
+                  if (mapRef.current && driverLocation) {
+                    setIsFollowingDriver(true);
+                    mapRef.current.animateToRegion(
+                      {
+                        ...driverLocation,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                      },
+                      1000
+                    );
+                  }
+                }}
+              >
+                <Ionicons name="locate" size={24} color="#3B82F6" />
               </TouchableOpacity>
             </View>
           </View>
@@ -569,22 +620,34 @@ export default function RideDetails() {
                 value={-rideData.app_commission}
                 isNegative
               />
-              <BreakdownItem
-                label="Total Pendapatan Driver"
-                value={rideData.driver_earning}
-                isBold
-              />
+              <View className="mt-4 justify-between border-t border-blue-200 pt-4">
+                <BreakdownItem
+                  label="Total Pendapatan Driver"
+                  value={rideData.driver_earning}
+                  isBold
+                />
+              </View>
             </View>
           </View>
 
           {/* Cancel Ride Button */}
           <TouchableOpacity
             className="mb-4 w-full items-center justify-center rounded-xl bg-red-500 px-4 py-3 shadow-sm active:bg-red-600"
-            onPress={handleCancelRide}
+            onPress={handleCancel}
+            disabled={isCancelling}
           >
-            <Text className="font-semibold text-white">
-              Batalkan Perjalanan
-            </Text>
+            {isCancelling ? (
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator color="white" />
+                <Text className="font-semibold text-white">
+                  Batalkan Perjalanan
+                </Text>
+              </View>
+            ) : (
+              <Text className="font-semibold text-white">
+                Batalkan Perjalanan
+              </Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </View>
