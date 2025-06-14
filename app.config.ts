@@ -39,6 +39,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'driver-alive-task',
         'background-location-task',
       ],
+      LSApplicationQueriesSchemes: ['whatsapp', 'tel', 'mailto', 'https'],
     },
   },
   android: {
@@ -93,9 +94,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-notifications',
       {
-        // "icon": "./assets/images/notification-icon.png",
-        // "color": "#ffffff",
-        // "sounds": ["./assets/sounds/notification.wav"],
         androidMode: 'default',
         androidCollapsedTitle: 'TripNus',
         iosDisplayInForeground: true,

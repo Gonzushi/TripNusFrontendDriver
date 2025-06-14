@@ -12,15 +12,24 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  Dimensions,
   Linking,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { AuthContext } from '@/lib/auth';
+import { useDriverStore } from '@/lib/driver/store';
 import { cancelRideByDriver, getActiveRideByDriver } from '@/lib/ride/api';
 import { type RideData } from '@/lib/ride/types';
 import { SafeView } from '@/lib/safe-view';
@@ -35,29 +44,9 @@ const openInGoogleMaps = (lat: number, lng: number) => {
   Linking.openURL(url);
 };
 
-// Calculate distance between two points in meters
-const calculateDistance = (
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-) => {
-  const R = 6371e3; // Earth's radius in meters
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c; // Distance in meters
-};
-
 export default function RideDetails() {
   const { authData } = useContext(AuthContext);
+  const { setAvailabilityStatus } = useDriverStore();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [rideData, setRideData] = useState<RideData | null>(null);
@@ -65,14 +54,57 @@ export default function RideDetails() {
     null
   );
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isNearPickup, setIsNearPickup] = useState(false);
   const [isFollowingDriver, setIsFollowingDriver] = useState(false);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null
   );
+  const [rideStatus, setRideStatus] = useState<'pickup' | 'dropoff'>('pickup');
 
   const mapRef = useRef<MapView | null>(null);
   const hasInitializedMap = useRef(false);
+  const translateX = useSharedValue(0);
+  const screenWidth = Dimensions.get('window').width;
+  const sliderWidth = screenWidth - 32; // Accounting for padding
+  const threshold = sliderWidth - 100; // Threshold to trigger confirmation
+
+  const handlePickupConfirmation = () => {
+    // TODO: Implement pickup passenger logic
+    console.log('Passenger picked up');
+    setRideStatus('dropoff');
+    translateX.value = withSpring(0, { damping: 15 });
+  };
+
+  const handleDropoffConfirmation = () => {
+    // TODO: Implement dropoff passenger logic
+    console.log('Passenger dropped off');
+  };
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      'worklet';
+    })
+    .onUpdate((event) => {
+      'worklet';
+      const newX = event.translationX;
+      translateX.value = Math.max(0, Math.min(newX, sliderWidth - 56));
+    })
+    .onEnd(() => {
+      'worklet';
+      if (translateX.value > threshold) {
+        translateX.value = withSpring(sliderWidth - 56, { damping: 15 });
+        if (rideStatus === 'pickup') {
+          runOnJS(handlePickupConfirmation)();
+        } else {
+          runOnJS(handleDropoffConfirmation)();
+        }
+      } else {
+        translateX.value = withSpring(0, { damping: 15 });
+      }
+    });
+
+  const sliderStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   // Add cleanup function
   const stopLocationTracking = useCallback(() => {
@@ -90,7 +122,7 @@ export default function RideDetails() {
       if (status === 'granted') {
         // Get initial location with lower accuracy for battery saving
         const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Low,
+          accuracy: Location.Accuracy.Balanced,
         });
         setDriverLocation({
           latitude: location.coords.latitude,
@@ -99,9 +131,9 @@ export default function RideDetails() {
 
         const subscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Low, // Use low accuracy for battery saving
+            accuracy: Location.Accuracy.Balanced, // Use low accuracy for battery saving
             timeInterval: 120 * 1000, // 2 minutes
-            distanceInterval: 100, // 100 meters
+            distanceInterval: 50, // 50 meters
             mayShowUserSettingsDialog: false, // Don't show settings dialog
           },
           (location) => {
@@ -129,13 +161,18 @@ export default function RideDetails() {
 
             // Check distance to pickup point
             if (rideData?.planned_pickup_coords.coordinates) {
-              const distance = calculateDistance(
-                newLocation.latitude,
-                newLocation.longitude,
-                rideData.planned_pickup_coords.coordinates[1],
-                rideData.planned_pickup_coords.coordinates[0]
-              );
-              setIsNearPickup(distance <= 75);
+              // Only update map if following driver
+              if (isFollowingDriver && mapRef.current) {
+                mapRef.current.animateToRegion(
+                  {
+                    latitude: newLocation.latitude,
+                    longitude: newLocation.longitude,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                  },
+                  500
+                );
+              }
             }
           }
         );
@@ -229,8 +266,7 @@ export default function RideDetails() {
 
       try {
         const { data, error } = await getActiveRideByDriver(
-          authData.session.access_token,
-          authData.driverId
+          authData.session.access_token
         );
 
         if (error || !data) {
@@ -252,11 +288,6 @@ export default function RideDetails() {
     fetchRideData();
   }, [authData]);
 
-  const handlePickupPassenger = () => {
-    // TODO: Implement pickup passenger logic
-    console.log('Passenger picked up');
-  };
-
   // Update cancel handler
   const handleCancel = async () => {
     if (!authData?.session.access_token || !rideData) return;
@@ -274,7 +305,8 @@ export default function RideDetails() {
           onPress: async () => {
             try {
               setIsCancelling(true);
-              stopLocationTracking(); // Stop location tracking when ride is cancelled
+              stopLocationTracking();
+              setAvailabilityStatus('available');
               const { error } = await cancelRideByDriver(
                 authData.session.access_token,
                 rideData.id,
@@ -298,6 +330,43 @@ export default function RideDetails() {
         },
       ]
     );
+  };
+
+  const openWhatsApp = async (phoneNumber: string) => {
+    try {
+      // Remove any non-numeric characters from the phone number
+      const phone = phoneNumber.replace(/\D/g, '');
+      console.log(phone);
+      const message = encodeURIComponent(
+        'Halo, saya driver TripNus. Saya akan segera menjemput Anda.'
+      );
+      const whatsappUrl = `whatsapp://send?phone=${phone}&text=${message}`;
+      const waMeUrl = `https://wa.me/${phone}?text=${message}`;
+
+      // First try to open WhatsApp app
+      const canOpenWhatsApp = await Linking.canOpenURL(whatsappUrl);
+      console.log('Can open WhatsApp:', canOpenWhatsApp);
+      if (canOpenWhatsApp) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        // If WhatsApp app is not installed, open in browser
+        const canOpenWaMe = await Linking.canOpenURL(waMeUrl);
+        if (canOpenWaMe) {
+          await Linking.openURL(waMeUrl);
+        } else {
+          Alert.alert(
+            'Error',
+            'Tidak dapat membuka WhatsApp. Silakan coba lagi nanti.'
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error opening WhatsApp:', error);
+      Alert.alert(
+        'Error',
+        'Tidak dapat membuka WhatsApp. Silakan coba lagi nanti.'
+      );
+    }
   };
 
   if (isLoading) {
@@ -347,7 +416,7 @@ export default function RideDetails() {
     >
       <View className="flex-1 bg-white">
         {/* Header */}
-        <View className="-mb-4 bg-blue-600 px-4 pb-16 pt-4">
+        <View className="-mb-4 bg-blue-600 px-4 pb-12 pt-4">
           <View className="flex-row items-center">
             <TouchableOpacity
               onPress={() => router.back()}
@@ -359,22 +428,18 @@ export default function RideDetails() {
               <Text className="mb-1 text-xl font-bold text-white">
                 Perjalanan Aktif
               </Text>
-              <Text className="text-base text-white/80">
-                Rp {rideData.driver_earning.toLocaleString('id-ID')} •{' '}
-                {Math.round(rideData.duration_s / 60)} menit
-              </Text>
             </View>
             <View className="w-10" />
           </View>
         </View>
 
         <ScrollView
-          className="-mt-4 flex-1 rounded-t-3xl bg-white px-6 py-3"
+          className="-mt-4 flex-1 rounded-t-3xl bg-white py-3"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         >
           {/* Map */}
-          <View className="mt-5 h-[50vh] w-full overflow-hidden rounded-2xl border border-blue-300 shadow-sm">
+          <View className="-mt-4 h-[50vh] w-full overflow-hidden rounded-2xl border border-blue-300 shadow-sm">
             <MapView
               ref={mapRef}
               provider={PROVIDER_GOOGLE}
@@ -416,7 +481,7 @@ export default function RideDetails() {
             </MapView>
 
             {/* Map Control Buttons */}
-            <View className="absolute right-4 top-4 flex-row gap-2">
+            <View className="absolute right-4 top-4 flex-row gap-1">
               <TouchableOpacity
                 className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md active:bg-gray-100"
                 onPress={() => {
@@ -516,139 +581,262 @@ export default function RideDetails() {
             </View>
           </View>
 
-          {/* Driver Navigation Buttons */}
-          <View className="mt-4 flex-row justify-between gap-3">
-            <TouchableOpacity
-              className="flex-1 items-center justify-center rounded-xl bg-blue-500 px-4 py-3 shadow-sm active:bg-blue-600"
-              onPress={() => openInGoogleMaps(pickupCoords[1], pickupCoords[0])}
-            >
-              <Text className="font-semibold text-white">Lokasi Jemput</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="flex-1 items-center justify-center rounded-xl bg-red-500 px-4 py-3 shadow-sm active:bg-red-600"
-              onPress={() =>
-                openInGoogleMaps(dropoffCoords[1], dropoffCoords[0])
-              }
-            >
-              <Text className="font-semibold text-white">Lokasi Tujuan</Text>
-            </TouchableOpacity>
-          </View>
+          <View className="px-6">
+            {/* Driver Navigation Buttons */}
+            <View className="mt-4 flex-row items-center gap-3">
+              <TouchableOpacity
+                className="flex-1 items-center justify-center rounded-3xl bg-blue-500 px-4 py-3 shadow-sm active:bg-blue-600"
+                onPress={() =>
+                  openInGoogleMaps(pickupCoords[1], pickupCoords[0])
+                }
+              >
+                <Text className="font-semibold text-white">Lokasi Jemput</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-1 items-center justify-center rounded-3xl bg-red-500 px-4 py-3 shadow-sm active:bg-red-600"
+                onPress={() =>
+                  openInGoogleMaps(dropoffCoords[1], dropoffCoords[0])
+                }
+              >
+                <Text className="font-semibold text-white">Lokasi Tujuan</Text>
+              </TouchableOpacity>
+              {/* Small phone icon button */}
+              <TouchableOpacity
+                onPress={() =>
+                  Linking.openURL(`tel:${rideData.riders.users.phone}`)
+                }
+                className="ml-1 h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm"
+                accessibilityLabel="Call Passenger"
+              >
+                <Ionicons name="call" size={18} color="#3B82F6" />
+              </TouchableOpacity>
+              {/* Small WhatsApp icon button */}
+              <TouchableOpacity
+                onPress={async () => {
+                  await openWhatsApp(rideData.riders.users.phone);
+                }}
+                className="ml-1 h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm"
+                accessibilityLabel="WhatsApp Passenger"
+              >
+                <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+              </TouchableOpacity>
+            </View>
 
-          {/* Pickup Button */}
-          <TouchableOpacity
-            className={`mt-4 w-full items-center justify-center rounded-xl px-4 py-3 shadow-sm ${
-              isNearPickup ? 'bg-green-500 active:bg-green-600' : 'bg-gray-300'
-            }`}
-            onPress={handlePickupPassenger}
-            disabled={!isNearPickup}
-          >
-            <Text className="font-semibold text-white">Penumpang Dijemput</Text>
-          </TouchableOpacity>
+            {/* Custom Slide to Confirm Button */}
+            <View className="mt-6 w-full">
+              <View className="relative h-16 w-full overflow-hidden rounded-full border border-gray-200 bg-gray-50">
+                <GestureDetector gesture={panGesture}>
+                  <Animated.View
+                    className={`absolute left-0 z-10 rounded-full ${
+                      rideStatus === 'pickup' ? 'bg-blue-500' : 'bg-red-500'
+                    }`}
+                    style={[
+                      {
+                        top: 0,
+                        height: 54,
+                        width: 54,
+                      },
+                      sliderStyle,
+                    ]}
+                  >
+                    <View className="h-full w-full items-center justify-center">
+                      <Ionicons
+                        name="chevron-forward"
+                        size={24}
+                        color="white"
+                      />
+                    </View>
+                  </Animated.View>
+                </GestureDetector>
 
-          {/* Trip & Earnings Info */}
-          <View className="mt-8 w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm">
-            <Text className="mb-4 text-lg font-semibold text-gray-900">
-              Detail Perjalanan
-            </Text>
-            <View className="space-y-1.5">
-              <View className="flex-row">
-                <View className="mt-1.5 h-2 w-2 rounded-full bg-blue-500" />
-                <View className="flex-1 pl-3">
+                <View className="absolute inset-0 items-center justify-center">
+                  <Text className="ml-8 text-base font-semibold text-gray-600">
+                    {rideStatus === 'pickup'
+                      ? 'Geser untuk Konfirmasi Penjemputan'
+                      : 'Geser untuk Konfirmasi Pengantaran'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Warnings */}
+            <View className="mt-8 space-y-3">
+              <View className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                <View className="flex-row items-start">
+                  <View className="-mt-0.5 mr-3">
+                    <Ionicons
+                      name="information-circle"
+                      size={20}
+                      color="#B45309"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-yellow-800">
+                      Penting: Konfirmasi di Titik Penjemputan dan Tujuan
+                    </Text>
+                    <View className="mt-2 space-y-1">
+                      <View className="flex-row">
+                        <Text className="mr-2 text-sm text-yellow-700">•</Text>
+                        <Text className="flex-1 text-sm text-yellow-700">
+                          Pastikan Anda berada di lokasi penjemputan sebelum
+                          mengkonfirmasi penjemputan
+                        </Text>
+                      </View>
+                      <View className="flex-row">
+                        <Text className="mr-2 text-sm text-yellow-700">•</Text>
+                        <Text className="flex-1 text-sm text-yellow-700">
+                          Konfirmasi pengantaran hanya setelah penumpang sampai
+                          di tujuan
+                        </Text>
+                      </View>
+                      <View className="flex-row">
+                        <Text className="mr-2 text-sm text-yellow-700">•</Text>
+                        <Text className="flex-1 text-sm text-yellow-700">
+                          Kedua konfirmasi ini wajib dilakukan untuk
+                          menyelesaikan perjalanan
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Driver Info Card */}
+            <View className="mt-8 w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm">
+              <Text className="mb-4 text-lg font-semibold text-gray-900">
+                Informasi Penumpang
+              </Text>
+              <View className="gap-2 space-y-4">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-gray-900">Nama Penumpang</Text>
                   <Text className="text-sm font-medium text-gray-900">
-                    {rideData.planned_pickup_address}
+                    {rideData.riders.first_name} {rideData.riders.last_name}
+                  </Text>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-gray-900">Rating</Text>
+                  <View className="flex-row items-center gap-1">
+                    <Ionicons name="star" size={16} color="#F59E0B" />
+                    <Text className="text-sm font-medium text-gray-900">
+                      {rideData.riders.rating.toFixed(1)}
+                    </Text>
+                  </View>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-gray-900">Nomor Telepon</Text>
+                  <Text className="text-sm font-medium text-blue-600">
+                    {rideData.riders.users.phone}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Trip & Earnings Info */}
+            <View className="mt-8 w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm">
+              <Text className="mb-4 text-lg font-semibold text-gray-900">
+                Detail Perjalanan
+              </Text>
+              <View className="space-y-1.5">
+                <View className="flex-row">
+                  <View className="mt-1.5 h-2 w-2 rounded-full bg-blue-500" />
+                  <View className="flex-1 pl-3">
+                    <Text className="text-sm font-medium text-gray-900">
+                      {rideData.planned_pickup_address}
+                    </Text>
+                    <Text className="text-xs text-gray-500">
+                      Lokasi Penjemputan
+                    </Text>
+                  </View>
+                </View>
+                <View className="ml-[3px] h-4 w-0.5 bg-gray-300" />
+                <View className="flex-row">
+                  <View className="mt-1.5 h-2 w-2 rounded-full bg-red-500" />
+                  <View className="flex-1 pl-3">
+                    <Text className="text-sm font-medium text-gray-900">
+                      {rideData.planned_dropoff_address}
+                    </Text>
+                    <Text className="text-xs text-gray-500">Lokasi Tujuan</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View className="mt-4 flex-row justify-between border-t border-blue-200 pt-4">
+                <View>
+                  <Text className="text-xl font-bold text-gray-900">
+                    Rp {rideData.driver_earning.toLocaleString('id-ID')}
                   </Text>
                   <Text className="text-xs text-gray-500">
-                    Lokasi Penjemputan
+                    Estimasi Pendapatan
                   </Text>
                 </View>
-              </View>
-              <View className="ml-[3px] h-4 w-0.5 bg-gray-300" />
-              <View className="flex-row">
-                <View className="mt-1.5 h-2 w-2 rounded-full bg-red-500" />
-                <View className="flex-1 pl-3">
-                  <Text className="text-sm font-medium text-gray-900">
-                    {rideData.planned_dropoff_address}
+                <View>
+                  <Text className="text-xl font-bold text-gray-900">
+                    {Math.round(rideData.duration_s / 60)} min
                   </Text>
-                  <Text className="text-xs text-gray-500">Lokasi Tujuan</Text>
+                  <Text className="text-xs text-gray-500">Durasi</Text>
+                </View>
+                <View>
+                  <Text className="text-xl font-bold text-gray-900">
+                    {(rideData.distance_m / 1000).toFixed(1)} km
+                  </Text>
+                  <Text className="text-xs text-gray-500">Jarak</Text>
                 </View>
               </View>
             </View>
 
-            <View className="mt-4 flex-row justify-between border-t border-blue-200 pt-4">
-              <View>
-                <Text className="text-xl font-bold text-gray-900">
-                  Rp {rideData.driver_earning.toLocaleString('id-ID')}
-                </Text>
-                <Text className="text-xs text-gray-500">
-                  Estimasi Pendapatan
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xl font-bold text-gray-900">
-                  {Math.round(rideData.duration_s / 60)} min
-                </Text>
-                <Text className="text-xs text-gray-500">Durasi</Text>
-              </View>
-              <View>
-                <Text className="text-xl font-bold text-gray-900">
-                  {(rideData.distance_m / 1000).toFixed(1)} km
-                </Text>
-                <Text className="text-xs text-gray-500">Jarak</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Earnings Breakdown */}
-          <View className="my-6 w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm">
-            <Text className="mb-4 text-lg font-semibold text-gray-900">
-              Rincian Pendapatan
-            </Text>
-            <View className="space-y-3">
-              <BreakdownItem label="Total Biaya" value={rideData.fare} />
-              <BreakdownItem
-                label="Biaya Platform"
-                value={-rideData.platform_fee}
-                isNegative
-              />
-              <BreakdownItem
-                label="Setelah Biaya Platform"
-                value={fareAfterPlatformFee}
-                isDivider
-              />
-              <BreakdownItem
-                label={`Komisi Aplikasi (${percentCommission.toFixed(1)}%)`}
-                value={-rideData.app_commission}
-                isNegative
-              />
-              <View className="mt-4 justify-between border-t border-blue-200 pt-4">
+            {/* Earnings Breakdown */}
+            <View className="my-6 w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm">
+              <Text className="mb-4 text-lg font-semibold text-gray-900">
+                Rincian Pendapatan
+              </Text>
+              <View className="space-y-3">
+                <BreakdownItem label="Total Biaya" value={rideData.fare} />
                 <BreakdownItem
-                  label="Total Pendapatan Driver"
-                  value={rideData.driver_earning}
-                  isBold
+                  label="Biaya Platform (Ditanggung Penumpang)"
+                  value={-rideData.platform_fee}
+                  isNegative
                 />
+                <BreakdownItem
+                  label="Setelah Biaya Platform"
+                  value={fareAfterPlatformFee}
+                  isDivider
+                />
+                <BreakdownItem
+                  label={`Komisi Aplikasi (${percentCommission.toFixed(1)}%)`}
+                  value={-rideData.app_commission}
+                  isNegative
+                />
+                <View className="mt-4 justify-between border-t border-blue-200 pt-4">
+                  <BreakdownItem
+                    label="Total Pendapatan Driver"
+                    value={rideData.driver_earning}
+                    isBold
+                  />
+                </View>
               </View>
             </View>
-          </View>
 
-          {/* Cancel Ride Button */}
-          <TouchableOpacity
-            className="mb-4 w-full items-center justify-center rounded-xl bg-red-500 px-4 py-3 shadow-sm active:bg-red-600"
-            onPress={handleCancel}
-            disabled={isCancelling}
-          >
-            {isCancelling ? (
-              <View className="flex-row items-center gap-2">
-                <ActivityIndicator color="white" />
+            {/* Cancel Ride Button */}
+            <TouchableOpacity
+              className="mb-4 w-full items-center justify-center rounded-xl bg-red-500 px-4 py-3 shadow-sm active:bg-red-600"
+              onPress={handleCancel}
+              disabled={isCancelling}
+            >
+              {isCancelling ? (
+                <View className="flex-row items-center gap-2">
+                  <ActivityIndicator color="white" />
+                  <Text className="font-semibold text-white">
+                    Batalkan Perjalanan
+                  </Text>
+                </View>
+              ) : (
                 <Text className="font-semibold text-white">
                   Batalkan Perjalanan
                 </Text>
-              </View>
-            ) : (
-              <Text className="font-semibold text-white">
-                Batalkan Perjalanan
-              </Text>
-            )}
-          </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </View>
     </SafeView>

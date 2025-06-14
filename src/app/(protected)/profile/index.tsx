@@ -225,7 +225,7 @@ export default function Profile() {
     const phoneNumber = '6285110600497'; // Remove any special characters
     const message =
       'Halo, saya membutuhkan bantuan untuk aplikasi TripNus Rider.\n\nNama: ' +
-      `${authState.authData?.firstName} ${authState.authData?.lastName}\n` +
+      `${authState.authData?.driverFirstName} ${authState.authData?.driverLastName}\n` +
       `Email: ${authState.authData?.user.email}\n` +
       'Masalah: '; // Leave space for user to describe their issue
 
@@ -274,12 +274,12 @@ export default function Profile() {
             onUpdate={handleProfilePictureUpdate}
           />
           <Text className="mt-4 text-2xl font-semibold text-white">
-            {authState.authData.firstName} {authState.authData.lastName}
+            {authState.authData.driverFirstName} {authState.authData.driverLastName}
           </Text>
 
           <ContactInfo
             email={authState.authData.user.email}
-            phone={authState.authData.user.phone}
+            phone={authState.authData.phone!}
           />
         </View>
 

@@ -94,14 +94,15 @@ class WebSocketService {
             accuracy: Location.Accuracy.Balanced,
           });
           this.currentLocation = location;
+
+          await this.registerDriver();
+          await this.sendLocationUpdate();
+
+          resolve();
         } catch (error) {
-          console.error('Error getting initial location:', error);
+          console.error('❌ Error during websocket setup:', error);
+          reject(error);
         }
-
-        this.registerDriver();
-        this.sendLocationUpdate();
-
-        resolve();
       });
 
       this.socket.once('connect_error', (err: Error) => {
@@ -155,7 +156,7 @@ class WebSocketService {
     };
   }
 
-  private registerDriver() {
+  private async registerDriver() {
     if (!this.socket || !this.driverId || !this.currentLocation) return;
 
     try {
@@ -166,7 +167,7 @@ class WebSocketService {
     }
   }
 
-  private sendLocationUpdate() {
+  private async sendLocationUpdate() {
     if (!this.socket || !this.driverId || !this.currentLocation) return;
 
     try {

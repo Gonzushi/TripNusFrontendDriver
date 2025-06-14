@@ -56,8 +56,6 @@ export const uploadDriverPhotoApi = async (
     body: formData,
   });
 
-  console.log(response);
-
   return response.json();
 };
 

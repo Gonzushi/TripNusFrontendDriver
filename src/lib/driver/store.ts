@@ -29,6 +29,7 @@ type DriverStore = {
   setWalletBalance: (balance: number) => void;
   syncOnlineStatus: () => Promise<void>;
   setIsLoading: (loading: boolean) => void;
+  setAvailabilityStatus: (status: string) => void;
 };
 
 export const useDriverStore = create<DriverStore>((set, get) => {
@@ -138,6 +139,14 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         });
       } catch (error) {
         console.error('Error in setOnline:', error);
+        if (error instanceof Error) {
+          alert(
+            `Failed to go ${status ? 'online' : 'offline'}: ${error.message}`
+          );
+        } else {
+          alert(`Failed to go ${status ? 'online' : 'offline'}: ${error}`);
+        }
+        return;
       } finally {
         set({ isLoading: false });
       }
@@ -178,7 +187,7 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         await set({ lastSync: now, checkInitialOnlineStatus: true });
 
         const response = await getDriverProfileApi(state.accessToken);
-        
+
         await set({ availability_status: response.data?.availability_status });
 
         if (response.data?.is_online === true && state.isOnline === false) {
@@ -212,10 +221,11 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         }
       } catch (error) {
         console.error('Error syncing online status:', error);
-        set({ checkInitialOnlineStatus: false });
+        set({ checkInitialOnlineStatus: false, isLoading: false });
       }
       set({ isLoading: false });
     },
     setIsLoading: (loading) => set({ isLoading: loading }),
+    setAvailabilityStatus: (status) => set({ availability_status: status }),
   };
 });

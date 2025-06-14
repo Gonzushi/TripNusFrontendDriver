@@ -3,7 +3,8 @@ import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import path from 'path';
 
-import { API_URL, SUPABASE_STORAGE_URL } from './constants';
+import { uploadDriverPhotoApi } from '../driver';
+import { SUPABASE_STORAGE_URL } from './constants';
 import { type PreparedImage } from './types';
 import { compressImage, getFileInfo, getStorageKey } from './utils';
 
@@ -128,13 +129,13 @@ export const updateProfilePicture = async (
         'Maaf, kami membutuhkan izin akses galeri untuk memperbarui foto profil Anda.'
       );
     }
-    
+
     // Pick image
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1, // We'll handle compression ourselves
+      quality: 0.5,
     });
 
     if (result.canceled) {
@@ -152,27 +153,19 @@ export const updateProfilePicture = async (
       type: preparedImage.type,
       name: `profile-${userId}${path.extname(preparedImage.uri)}`,
     });
+    formData.append('photoType', 'profile');
 
     // Upload image
-    const response = await fetch(`${API_URL}/rider/picture`, {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'multipart/form-data',
-      },
-      body: formData,
-    });
 
-    const data = await response.json();
+    const response = await uploadDriverPhotoApi(accessToken, formData);
 
-    if (!response.ok) {
-      throw new Error(data.message || 'Gagal mengunggah foto profil');
+    if (response.status !== 200) {
+      throw new Error(response.message || 'Gagal mengunggah foto profil');
     }
 
     return {
       success: true,
-      pictureUrl: data.data.profile_picture_url,
+      pictureUrl: response!.data?.profile_picture_url,
     };
   } catch (error) {
     console.error('Error updating profile picture:', error);

@@ -129,13 +129,11 @@ export const cancelRideByDriver = async (
 
 export const getActiveRideByDriver = async (
   token: string,
-  driverId: string
 ): Promise<ApiRequestResponse<RideData>> => {
   return apiRequest<RideData>(
     '/ride/active-ride-by-driver',
     {
-      method: 'POST',
-      body: JSON.stringify({ driverId: driverId }),
+      method: 'GET',
     },
     token
   );

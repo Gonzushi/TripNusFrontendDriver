@@ -87,28 +87,19 @@ export type AuthData = {
     };
   };
   userId: string;
-  firstName: string;
-  lastName: string | null;
   phone: string | null;
   riderId: string;
+  riderFirstName: string;
+  riderLastName: string | null;
   riderProfilePictureUrl: string | null;
   driverId: string | null;
   driverFirstName: string | null;
   driverLastName: string | null;
+  driverVehicleType: string | null;
+  driverVehiclePlateNumber: string | null;
   driverProfilePictureUrl: string | null;
   driverStatus: string | null;
   driverNotes: string | null;
-  driverVehicleType: string | null;
-  driverVehiclePlateNumber: string | null;
-  location: {
-    latitude: number;
-    longitude: number;
-    accuracy: number;
-    altitude: number | null;
-    altitudeAccuracy: number | null;
-    heading: number | null;
-    speed: number | null;
-  };
 };
 
 export type AuthStateInternal = {

@@ -30,7 +30,7 @@ import NotificationDebug from '@/lib/notification/notification-debug';
 import { getProfilePictureUri } from '@/lib/profile-picture';
 import { SafeView } from '@/lib/safe-view';
 
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 
 // Store for console logs
 const consoleLogStore = {
@@ -444,7 +444,7 @@ function StatsSection() {
 function CommunitySupport({ onShare }: { onShare: () => void }) {
   return (
     <View className="px-4">
-      <View className="rounded-xl border border-blue-100/50 bg-blue-50/50 p-5">
+      <View className="rounded-xl border border-blue-300/100 bg-blue-50/50 p-5">
         <View className="flex-row items-start">
           <View className="flex-1">
             <Text className="mb-1 text-base font-medium text-gray-800">
@@ -657,7 +657,7 @@ export default function Index() {
     <SafeView isShowingTabBar={true}>
       <ScrollView className="flex-1 bg-white">
         <Header
-          firstName={authData?.firstName || 'Teman'}
+          firstName={authData?.driverFirstName || 'Teman'}
           profilePictureUri={profilePictureUri}
           onProfilePress={handleProfilePress}
           isOnline={isOnline && !checkInitialOnlineStatus}
@@ -714,7 +714,7 @@ export default function Index() {
 
         {DEBUG_MODE && <ConsoleLogViewer />}
 
-        <NotificationDebug />
+        {DEBUG_MODE && <NotificationDebug />}
 
         <View className="h-8" />
       </ScrollView>

@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 
-import { type UpdateDriverProfileData } from '@/lib/driver/types';
+import { type initialFormData } from '@/app/(profile-setup)/profile-setup-3';
 
 // Logo component
 export function Logo() {
@@ -384,7 +384,7 @@ export function SubmitButton({
 }
 
 // Debug Output component
-export function DebugOutput({ data }: { data: UpdateDriverProfileData }) {
+export function DebugOutput({ data }: { data: typeof initialFormData }) {
   return (
     <View className="mb-8 rounded-xl border border-gray-200 bg-gray-50 p-4">
       <Text className="mb-2 font-bold">Debug Output:</Text>

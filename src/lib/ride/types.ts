@@ -3,7 +3,7 @@ export type Point = {
   crs: {
     type: 'name';
     properties: {
-      name: 'EPSG:4326';
+      name: string;
     };
   };
   coordinates: [number, number];
@@ -81,6 +81,14 @@ export type RideData = {
   actual_dropoff_coords: Point | null;
   match_attempt?: MatchAttempt;
   status_reason: string | null;
+  riders: {
+    users: {
+      phone: string;
+    };
+    rating: number;
+    first_name: string;
+    last_name: string;
+  };
 };
 
 export type UpdateRidePayload = {

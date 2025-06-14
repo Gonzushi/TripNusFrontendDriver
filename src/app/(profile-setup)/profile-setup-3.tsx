@@ -37,27 +37,27 @@ import {
   validateForm,
 } from '@/lib/profile-setup/utils';
 
-export default function ProfileSetup3() {
-  const initialFormData: FormInputData = {
-    address_line1: '',
-    address_line2: '',
-    city: '',
-    date_of_birth: '',
-    sex: '',
-    driver_license_class: '',
-    driver_license_expiration: '',
-    driver_license_number: '',
-    ktp_id: '',
-    postal_code: '',
-    vehicle_brand: '',
-    vehicle_color: '',
-    vehicle_model: '',
-    vehicle_plate_number: '',
-    vehicle_type: '',
-    vehicle_registration_no: '',
-    vehicle_year: '',
-  };
+export const initialFormData: FormInputData = {
+  address_line1: '',
+  address_line2: '',
+  city: '',
+  date_of_birth: '',
+  sex: '',
+  driver_license_class: '',
+  driver_license_expiration: '',
+  driver_license_number: '',
+  ktp_id: '',
+  postal_code: '',
+  vehicle_brand: '',
+  vehicle_color: '',
+  vehicle_model: '',
+  vehicle_plate_number: '',
+  vehicle_type: '',
+  vehicle_registration_no: '',
+  vehicle_year: '',
+};
 
+export default function ProfileSetup3() {
   const [formData, setFormData] = useState<FormInputData>(initialFormData);
   const [formErrors, setFormErrors] = useState<
     ReturnType<typeof validateForm>['errors']
