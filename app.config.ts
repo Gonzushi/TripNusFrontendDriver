@@ -26,13 +26,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       UIBackgroundModes: ['remote-notification', 'location', 'fetch'],
       'aps-environment': 'development',
       NSLocationWhenInUseUsageDescription:
-        'This app uses your location to show nearby places.',
+        'Aplikasi ini menggunakan lokasi Anda untuk menampilkan tempat-tempat terdekat.',
       NSLocationAlwaysUsageDescription:
-        'This app uses your location in the background to improve your experience.',
+        'Aplikasi ini menggunakan lokasi Anda di latar belakang untuk meningkatkan pengalaman Anda.',
       NSLocationAlwaysAndWhenInUseUsageDescription:
-        'TripNus Driver needs your location to track your position while receiving and executing passenger orders, including when the app is running in the background.',
+        'TripNus Driver memerlukan lokasi Anda untuk melacak posisi saat menerima dan menjalankan pesanan penumpang, termasuk ketika aplikasi berjalan di latar belakang.',
       NSPhotoLibraryUsageDescription:
-        'TripNus memerlukan akses ke galeri foto Anda untuk mengupload dokumen seperti KTP, SIM, dan STNK.',
+        'TripNus memerlukan akses ke galeri foto Anda untuk mengunggah dokumen seperti KTP, SIM, dan STNK.',
       NSCameraUsageDescription:
         'TripNus memerlukan akses ke kamera Anda untuk mengambil foto dokumen seperti KTP, SIM, dan STNK.',
       BGTaskSchedulerPermittedIdentifiers: [

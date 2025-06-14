@@ -96,7 +96,6 @@ class WebSocketService {
           this.currentLocation = location;
 
           await this.registerDriver();
-          await this.sendLocationUpdate();
 
           resolve();
         } catch (error) {
@@ -139,10 +138,8 @@ class WebSocketService {
       socketId: this.socket!.id!,
       role: 'driver',
       id: this.driverId,
-      location: {
-        lat: this.currentLocation.coords.latitude,
-        lng: this.currentLocation.coords.longitude,
-      },
+      lat: this.currentLocation.coords.latitude,
+      lng: this.currentLocation.coords.longitude,
       vehicle_type:
         (this.driverVehicleType?.toLowerCase() as 'motorcycle' | 'car') ||
         'unknown',
@@ -161,7 +158,14 @@ class WebSocketService {
 
     try {
       const data = this.createDriverData();
-      this.socket.emit('register', data);
+
+      this.socket.emit('register', data, async (res: { success: boolean }) => {
+        if (res.success) {
+          await this.sendLocationUpdate();
+        } else {
+          console.error('❌ Registration failed on server.');
+        }
+      });
     } catch (error) {
       console.error('Failed to register driver:', error);
     }
@@ -173,7 +177,6 @@ class WebSocketService {
     try {
       const data = this.createDriverData();
       this.socket.emit('driver:updateLocation', data);
-
       console.log(
         `📍 Location Websocket - Lat: ${this.currentLocation.coords.latitude.toFixed(
           6

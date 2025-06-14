@@ -2,10 +2,8 @@ export type DriverData = {
   socketId?: string;
   role?: 'driver';
   id?: string;
-  location?: {
-    lat: number | null;
-    lng: number | null;
-  } | null;
+  lat?: number | null;
+  lng?: number | null;
   vehicle_type?: 'motorcycle' | 'car' | 'unknown';
   vehicle_plate?: string;
   status?: 'available' | 'on_trip' | 'offline' | 'waiting';

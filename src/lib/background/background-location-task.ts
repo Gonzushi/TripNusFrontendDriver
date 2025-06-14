@@ -17,6 +17,7 @@ import {
 import { type DriverData } from './types';
 import { debugLog } from './utlis';
 
+
 let lastUpdateTime = 0;
 let lastLocation: Location.LocationObject | null = null;
 let cachedAuthData: {
@@ -161,10 +162,8 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async (taskData) => {
     const driverData: DriverData = {
       role: 'driver',
       id: authData.driverId,
-      location: {
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
-      },
+      lat: location.coords.latitude,
+      lng: location.coords.longitude,
       vehicle_type:
         (authData.vehicleType.toLowerCase() as 'motorcycle' | 'car') ||
         'unknown',

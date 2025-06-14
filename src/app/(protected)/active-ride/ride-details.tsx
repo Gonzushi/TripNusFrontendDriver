@@ -336,7 +336,7 @@ export default function RideDetails() {
     try {
       // Remove any non-numeric characters from the phone number
       const phone = phoneNumber.replace(/\D/g, '');
-      console.log(phone);
+
       const message = encodeURIComponent(
         'Halo, saya driver TripNus. Saya akan segera menjemput Anda.'
       );
@@ -345,7 +345,7 @@ export default function RideDetails() {
 
       // First try to open WhatsApp app
       const canOpenWhatsApp = await Linking.canOpenURL(whatsappUrl);
-      console.log('Can open WhatsApp:', canOpenWhatsApp);
+
       if (canOpenWhatsApp) {
         await Linking.openURL(whatsappUrl);
       } else {
