@@ -59,10 +59,9 @@ class WebSocketService {
       this.driverVehicleType === driverVehicleType &&
       this.driverVehiclePlateNumber === driverVehiclePlateNumber
     ) {
+      console.log('✅ Websocket already connected with same driver info');
       await this.getCurrentLocation();
       await this.sendLocationUpdate();
-
-      console.log('✅ Websocket already connected with same driver info');
       return;
     }
 
