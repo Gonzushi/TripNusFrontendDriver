@@ -8,8 +8,8 @@ import { type DriverData } from './types';
 import { debugLog } from './utlis';
 
 // Constants
-// const WEBSOCKET_URL = 'wss://ws.trip-nus.com';
-const WEBSOCKET_URL = 'http://localhost:3001';
+const WEBSOCKET_URL = 'wss://ws.trip-nus.com';
+// const WEBSOCKET_URL = 'http://localhost:3001';
 
 class WebSocketService {
   private socket: Socket | null = null;
