@@ -28,7 +28,6 @@ type DriverStore = {
   setOnline: (status: boolean) => Promise<void>;
   setWalletBalance: (balance: number) => void;
   syncOnlineStatus: () => Promise<void>;
-  setIsLoading: (loading: boolean) => void;
   setAvailabilityStatus: (status: string) => void;
 };
 
@@ -79,8 +78,18 @@ export const useDriverStore = create<DriverStore>((set, get) => {
     setVehicleType: (type) => set({ driverVehicleType: type }),
     setVehiclePlateNumber: (plate) => set({ driverVehiclePlateNumber: plate }),
     setOnline: async (status) => {
-      console.log('------ Set Online =', status, '------');
+      // Get current state
       const state = get();
+
+      // Prevent redundant calls
+      if (state.isLoading) {
+        return;
+      } else {
+        set({ isLoading: true });
+      }
+
+      // Log the current state
+      console.log('------ Set Online =', status, '------');
 
       // Prevent redundant calls
       if (state.isOnline === status) {
@@ -88,7 +97,6 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         return;
       }
 
-      set({ isLoading: true });
 
       try {
         if (status) {
@@ -146,7 +154,6 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         } else {
           alert(`Failed to go ${status ? 'online' : 'offline'}: ${error}`);
         }
-        return;
       } finally {
         set({ isLoading: false });
       }
@@ -154,18 +161,24 @@ export const useDriverStore = create<DriverStore>((set, get) => {
 
     setWalletBalance: (balance) => set({ walletBalance: balance }),
     syncOnlineStatus: async () => {
+      // Get current state
       const state = get();
 
-      if (state.isLoading) return;
+      // Prevent redundant calls
+      if (state.isLoading) {
+        return;
+      } else {
+        set({ isLoading: true });
+      }
 
-      set({ isLoading: true });
-
+      // Check if access token is present
       if (!state.accessToken) {
         console.error('Missing access token');
         set({ isLoading: false, checkInitialOnlineStatus: false });
         return;
       }
 
+      // Get current timestamp
       const now = Date.now();
 
       // Skip if manual update was recent (10 seconds)
@@ -180,52 +193,48 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         return;
       }
 
-      console.log('Syncing online status');
+      // Log the current state
+      console.log('------ Sync Online Status ------');
 
       try {
         // Update lastSync timestamp before making the API call
-        await set({ lastSync: now, checkInitialOnlineStatus: true });
+        set({ lastSync: now, checkInitialOnlineStatus: true });
 
         const response = await getDriverProfileApi(state.accessToken);
 
-        await set({ availability_status: response.data?.availability_status });
+        set({ availability_status: response.data?.availability_status });
 
-        if (response.data?.is_online === true && state.isOnline === false) {
+        if (response.data?.is_online === true) {
           if (
             state.driverId &&
             state.driverVehicleType &&
             state.driverVehiclePlateNumber
-          ) {
-            await set({ isOnline: true });
-            await set({ checkInitialOnlineStatus: false });
-
-            await startBackgroundUpdates();
-
+          ) {    
             await webSocketService.connect(
               state.driverId,
               state.driverVehicleType,
               state.driverVehiclePlateNumber
             );
+
+            await startBackgroundUpdates();
+            
+            set({ isOnline: true });
           }
         } else if (
-          response.data?.is_online === false &&
-          state.isOnline === true
+          response.data?.is_online === false
         ) {
-          await set({ isOnline: false });
-          await set({ checkInitialOnlineStatus: false });
-
-          await stopBackgroundUpdates();
           await webSocketService.disconnect();
-        } else {
-          set({ checkInitialOnlineStatus: false });
+          await stopBackgroundUpdates();
+
+          set({ isOnline: false });
         }
+        set({ checkInitialOnlineStatus: false });
       } catch (error) {
         console.error('Error syncing online status:', error);
         set({ checkInitialOnlineStatus: false, isLoading: false });
       }
       set({ isLoading: false });
     },
-    setIsLoading: (loading) => set({ isLoading: loading }),
     setAvailabilityStatus: (status) => set({ availability_status: status }),
   };
 });

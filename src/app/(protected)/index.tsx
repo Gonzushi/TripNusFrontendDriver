@@ -494,7 +494,6 @@ export default function Index() {
     setVehicleType,
     setVehiclePlateNumber,
     syncOnlineStatus,
-    setIsLoading,
   } = useDriverStore();
 
   const checkLocationPermissions = async () => {
@@ -549,7 +548,7 @@ export default function Index() {
       isMounted = false;
       subscription.remove();
     };
-  }, []); // Remove isOnline from dependencies
+  }, []); 
 
   // Check permissions and sync status when screen is focused
   useFocusEffect(
@@ -595,7 +594,6 @@ export default function Index() {
 
   // Event handlers
   const handleToggleOnline = async () => {
-    setIsLoading(true);
     if (!isOnline) {
       // Check location permission when turning online
       await checkLocationPermissions();

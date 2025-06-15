@@ -8,8 +8,8 @@ import { type DriverData } from './types';
 import { debugLog } from './utlis';
 
 // Constants
-const WEBSOCKET_URL = 'wss://ws.trip-nus.com';
-// const WEBSOCKET_URL = 'http://localhost:3001';
+// const WEBSOCKET_URL = 'wss://ws.trip-nus.com';
+const WEBSOCKET_URL = 'http://localhost:3001';
 
 class WebSocketService {
   private socket: Socket | null = null;
@@ -59,7 +59,10 @@ class WebSocketService {
       this.driverVehicleType === driverVehicleType &&
       this.driverVehiclePlateNumber === driverVehiclePlateNumber
     ) {
-      console.log('Already connected with same driver info');
+      await this.getCurrentLocation();
+      await this.sendLocationUpdate();
+
+      console.log('✅ Websocket already connected with same driver info');
       return;
     }
 
@@ -90,11 +93,7 @@ class WebSocketService {
         );
 
         try {
-          const location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          this.currentLocation = location;
-
+          await this.getCurrentLocation();
           await this.registerDriver();
 
           resolve();
@@ -128,6 +127,13 @@ class WebSocketService {
     this.socket.on('connect_error', (err: Error) => {
       console.error('⚠️ Connection error (repeat):', err.message);
     });
+  }
+
+  private async getCurrentLocation() {
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+    this.currentLocation = location;
   }
 
   private createDriverData(): DriverData {
@@ -191,7 +197,7 @@ class WebSocketService {
     }
   }
 
-  disconnect() {
+  async disconnect() {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
