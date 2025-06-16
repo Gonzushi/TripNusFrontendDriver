@@ -45,6 +45,8 @@ const openInGoogleMaps = (lat: number, lng: number) => {
 };
 
 export default function RideDetails() {
+  const isTrackingRef = useRef(false);
+
   const { authData } = useContext(AuthContext);
   const { setAvailabilityStatus } = useDriverStore();
   const router = useRouter();
@@ -111,30 +113,33 @@ export default function RideDetails() {
     if (locationSubscriptionRef.current) {
       locationSubscriptionRef.current.remove();
       locationSubscriptionRef.current = null;
+      isTrackingRef.current = false;
     }
   }, []);
 
   // Update startLocationTracking to store the subscription
   const startLocationTracking = useCallback(async () => {
+    if (isTrackingRef.current) return; // ✅ Don't start again
+  
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-
+  
       if (status === 'granted') {
-        // Get initial location with lower accuracy for battery saving
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
+  
         setDriverLocation({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         });
-
+  
         const subscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced, // Use low accuracy for battery saving
-            timeInterval: 120 * 1000, // 2 minutes
-            distanceInterval: 50, // 50 meters
-            mayShowUserSettingsDialog: false, // Don't show settings dialog
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 120_000,
+            distanceInterval: 50,
+            mayShowUserSettingsDialog: false,
           },
           (location) => {
             const newLocation = {
@@ -142,57 +147,29 @@ export default function RideDetails() {
               longitude: location.coords.longitude,
             };
             setDriverLocation(newLocation);
-
-            // Only update map region if following driver and app is in foreground
-            if (
-              isFollowingDriver &&
-              mapRef.current &&
-              AppState.currentState === 'active'
-            ) {
+  
+            if (isFollowingDriver && mapRef.current) {
               mapRef.current.animateToRegion(
                 {
-                  ...newLocation,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
+                  latitude: newLocation.latitude,
+                  longitude: newLocation.longitude,
+                  latitudeDelta: 0.005,
+                  longitudeDelta: 0.005,
                 },
-                1000
+                500
               );
-            }
-
-            // Check distance to pickup point
-            if (rideData?.planned_pickup_coords.coordinates) {
-              // Only update map if following driver
-              if (isFollowingDriver && mapRef.current) {
-                mapRef.current.animateToRegion(
-                  {
-                    latitude: newLocation.latitude,
-                    longitude: newLocation.longitude,
-                    latitudeDelta: 0.005,
-                    longitudeDelta: 0.005,
-                  },
-                  500
-                );
-              }
             }
           }
         );
+  
         locationSubscriptionRef.current = subscription;
-      } else {
-        Alert.alert(
-          'Location Permission',
-          'Location permission is optional. You can use Google Maps for navigation.',
-          [{ text: 'OK' }]
-        );
+        isTrackingRef.current = true; // ✅ Mark as running
       }
     } catch (error) {
       console.error('Error starting location tracking:', error);
-      Alert.alert(
-        'Location Error',
-        'Failed to start location tracking. You can still use Google Maps for navigation.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Location Error', 'Failed to start tracking.', [{ text: 'OK' }]);
     }
-  }, [isFollowingDriver, rideData]);
+  }, [isFollowingDriver]);
 
   // Handle app state changes with debounce
   useEffect(() => {

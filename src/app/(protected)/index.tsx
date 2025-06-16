@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, usePathname, useRouter } from 'expo-router';
 import React, {
   useCallback,
   useContext,
@@ -526,13 +526,29 @@ export default function Index() {
   };
 
   // Check permissions and sync status when app comes to foreground
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
   useEffect(() => {
     let isMounted = true;
+    let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active' && isMounted) {
-        await checkLocationPermissions();
-        await syncOnlineStatus();
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (
+        nextAppState === 'active' &&
+        isMounted &&
+        pathnameRef.current === '/'
+      ) {
+        if (debounceTimeout) clearTimeout(debounceTimeout);
+
+        debounceTimeout = setTimeout(async () => {
+          await checkLocationPermissions();
+          await syncOnlineStatus();
+        }, 1000); // ⏱️ 1 second debounce
       }
     };
 
@@ -541,14 +557,15 @@ export default function Index() {
       handleAppStateChange
     );
 
-    // Initial sync
+    // Initial sync (debounced as well)
     handleAppStateChange('active');
 
     return () => {
       isMounted = false;
+      if (debounceTimeout) clearTimeout(debounceTimeout);
       subscription.remove();
     };
-  }, []); 
+  }, []);
 
   // Check permissions and sync status when screen is focused
   useFocusEffect(
