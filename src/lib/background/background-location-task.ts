@@ -12,13 +12,15 @@ import {
   BACKGROUND_LOCATION_TASK,
   DEBUG_MODE,
   DISTANCE_UPDATE_INTERVAL,
+  DRIVER_LOCATION_KEY,
   LOCATION_UPDATE_INTERVAL,
+  SAVE_INTERVAL_MS,
 } from './constants';
 import { type DriverData } from './types';
-import { debugLog } from './utlis';
-
+import { debugLog } from './utils';
 
 let lastUpdateTime = 0;
+let lastSavedToStorageTime = 0;
 let lastLocation: Location.LocationObject | null = null;
 let cachedAuthData: {
   driverId: string;
@@ -46,6 +48,31 @@ function calculateDistance(
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c;
+}
+
+// Save location to AsyncStorage with debounce
+async function maybeSaveLocationToStorage(location: Location.LocationObject) {
+  const now = Date.now();
+
+  if (now - lastSavedToStorageTime < SAVE_INTERVAL_MS) {
+    debugLog(DEBUG_MODE, '⏳ Skipping AsyncStorage save (debounced)');
+    return;
+  }
+
+  lastSavedToStorageTime = now;
+
+  try {
+    await AsyncStorage.setItem(
+      DRIVER_LOCATION_KEY,
+      JSON.stringify({
+        ...location,
+        timestamp: Date.now(),
+      })
+    );
+    debugLog(DEBUG_MODE, '✅ Saved location to AsyncStorage');
+  } catch (error) {
+    console.error('❌ Failed to save location to AsyncStorage:', error);
+  }
 }
 
 // Get cached auth data or load from storage
@@ -187,6 +214,9 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async (taskData) => {
     // Update our tracking variables after successful update
     lastUpdateTime = Date.now();
     lastLocation = location;
+
+    // After updating lastUpdateTime and lastLocation:
+    await maybeSaveLocationToStorage(location);
 
     console.log(
       `📍 Location Background - Lat: ${location.coords.latitude.toFixed(

@@ -374,6 +374,7 @@ function StatCard({
   borderColor,
   value,
   label,
+  iconSize = 22,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
@@ -381,22 +382,40 @@ function StatCard({
   borderColor: string;
   value: string;
   label: string;
+  iconSize?: number;
 }) {
   return (
     <View
-      className={`w-[31%] rounded-2xl border ${borderColor} ${bgColor} shadow-sm`}
+      className={`aspect-square w-[31%] rounded-2xl border ${borderColor} ${bgColor} shadow-sm`}
     >
-      <View className="px-3 py-4">
+      <View className="flex-1 px-3 py-4">
+        {/* Top 50%: Value and Icon */}
         <View
-          className={`mb-3 h-11 w-11 items-center justify-center rounded-full ${
-            bgColor.replace('bg-', 'bg-') + '/90'
-          }`}
+          style={{ flex: 5 }}
+          className="flex-row items-center justify-between"
         >
-          <Ionicons name={icon} size={28} color={iconColor} />
+          <Text className="text-xl font-bold text-gray-800">{value}</Text>
+          <View
+            className={`h-9 w-9 items-center justify-center rounded-full ${
+              bgColor.replace('bg-', 'bg-') + '/90'
+            }`}
+          >
+            <Ionicons name={icon} size={iconSize} color={iconColor} />
+          </View>
         </View>
-        <View>
-          <Text className="text-2xl font-bold text-gray-800">{value}</Text>
-          <Text className="mt-1 text-[13px] text-gray-600">{label}</Text>
+
+        {/* Bottom 50%: Label aligned top-left, no truncation */}
+        <View
+          style={{ flex: 5 }}
+          className="w-full items-start justify-start pt-1"
+        >
+          <Text
+            className="w-full text-[13px] leading-[17px] text-gray-600"
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {label}
+          </Text>
         </View>
       </View>
     </View>
@@ -418,6 +437,7 @@ function StatsSection() {
           borderColor="border-blue-100"
           value="82"
           label="Total Perjalanan"
+          iconSize={26}
         />
         <StatCard
           icon="map"
@@ -426,6 +446,7 @@ function StatsSection() {
           borderColor="border-purple-100"
           value="13 km"
           label="Jarak Rata-rata"
+          iconSize={20}
         />
         <StatCard
           icon="star"
@@ -434,6 +455,7 @@ function StatsSection() {
           borderColor="border-yellow-100"
           value="4.9"
           label="Penilaian"
+          iconSize={26}
         />
       </View>
     </View>

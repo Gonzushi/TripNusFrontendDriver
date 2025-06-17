@@ -1,5 +1,4 @@
 export type DriverData = {
-  socketId?: string;
   role?: 'driver';
   id?: string;
   lat?: number | null;

@@ -8,7 +8,8 @@
       "@env": ["./src/lib/env.js"]
     },
     "esModuleInterop": true,
-    "checkJs": true
+    "checkJs": true,
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   },
   "exclude": [
     "node_modules",

@@ -106,7 +106,7 @@ export default function NewRideRequest() {
         // Navigate to ride details without passing data
         router.replace('/active-ride/ride-details');
       } else {
-        let message = 'Terjadi kesalahan saat mengkonfirmasi perjalanan.';
+        let message = 'Penumpang telah membatalkan perjalanan.';
 
         if (
           error === 'Ride has already been taken.' ||
