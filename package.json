@@ -5,7 +5,7 @@
   "scripts": {
     "start": "cross-env EXPO_NO_DOTENV=1 expo start --dev-client",
     "prebuild": "cross-env EXPO_NO_DOTENV=1 expo prebuild",
-    "android": "cross-env EXPO_NO_DOTENV=1 expo run:android",
+    "android": "emulator -avd PIXEL9_DEFAULT > /dev/null 2>&1 & sleep 10 && cross-env EXPO_NO_DOTENV=1 expo run:android",
     "ios": "cross-env EXPO_NO_DOTENV=1 expo run:ios",
     "web": "cross-env EXPO_NO_DOTENV=1 expo start --web",
     "xcode": "xed -b ios",

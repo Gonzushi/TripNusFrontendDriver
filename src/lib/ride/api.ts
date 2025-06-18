@@ -39,20 +39,6 @@ const apiRequest = async <T>(
   }
 };
 
-export const getActiveRide = async (
-  token: string,
-  riderId: string
-): Promise<ApiRequestResponse<RideData>> => {
-  return apiRequest<RideData>(
-    '/ride/active-ride',
-    {
-      method: 'POST',
-      body: JSON.stringify({ riderId }),
-    },
-    token
-  );
-};
-
 export const updateRide = async (
   token: string,
   payload: UpdateRidePayload

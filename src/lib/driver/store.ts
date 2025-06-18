@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
 import {
@@ -7,28 +8,27 @@ import {
 import { webSocketService } from '@/lib/background/websocket-service';
 import { notificationEmitter } from '@/lib/notification-handler';
 
+import { type AuthData } from '../auth/types';
+import {
+  DRIVER_AVAILABILITY_STATUS_KEY,
+  PICK_UP_LOCATION_KEY,
+} from '../background/constants';
+import { type AvailabilityStatus } from '../background/types';
+import { getActiveRideByDriver } from '../ride/api';
 import { getDriverProfileApi, updateDriverProfileApi } from './api';
 
 type DriverStore = {
-  accessToken: string | null;
+  authData: AuthData | null;
   isOnline: boolean;
-  walletBalance: number;
-  driverId: string | null;
-  driverVehicleType: string | null;
-  driverVehiclePlateNumber: string | null;
   lastManualUpdate: number;
   lastSync: number;
   isLoading: boolean;
   checkInitialOnlineStatus: boolean;
-  availability_status: string | null;
-  setAccessToken: (token: string) => void;
-  setDriverId: (id: string) => void;
-  setVehicleType: (type: string) => void;
-  setVehiclePlateNumber: (plate: string) => void;
+  availabilityStatus: AvailabilityStatus;
+  setAuthData: (authData: AuthData | null) => void;
   setOnline: (status: boolean) => Promise<void>;
-  setWalletBalance: (balance: number) => void;
   syncOnlineStatus: () => Promise<void>;
-  setAvailabilityStatus: (status: string) => void;
+  setAvailabilityStatus: (status: AvailabilityStatus) => void;
 };
 
 export const useDriverStore = create<DriverStore>((set, get) => {
@@ -62,21 +62,14 @@ export const useDriverStore = create<DriverStore>((set, get) => {
   });
 
   return {
-    accessToken: null,
+    authData: null,
     isOnline: false,
-    walletBalance: 0,
-    driverId: null,
-    driverVehicleType: null,
-    driverVehiclePlateNumber: null,
     lastManualUpdate: 0,
     lastSync: 0,
     isLoading: false,
     checkInitialOnlineStatus: true,
-    availability_status: 'available',
-    setAccessToken: (token) => set({ accessToken: token }),
-    setDriverId: (id) => set({ driverId: id }),
-    setVehicleType: (type) => set({ driverVehicleType: type }),
-    setVehiclePlateNumber: (plate) => set({ driverVehiclePlateNumber: plate }),
+    availabilityStatus: 'available',
+    setAuthData: (authData) => set({ authData }),
     setOnline: async (status) => {
       // Get current state
       const state = get();
@@ -97,19 +90,23 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         return;
       }
 
+      await AsyncStorage.setItem(
+        DRIVER_AVAILABILITY_STATUS_KEY,
+        'available'
+      );
 
       try {
         if (status) {
           if (
-            !state.driverId ||
-            !state.driverVehicleType ||
-            !state.driverVehiclePlateNumber ||
-            !state.accessToken
+            !state.authData?.driverId ||
+            !state.authData?.driverVehicleType ||
+            !state.authData?.driverVehiclePlateNumber ||
+            !state.authData?.session.access_token
           ) {
             throw new Error('Missing driver information');
           }
 
-          await updateDriverProfileApi(state.accessToken, {
+          await updateDriverProfileApi(state.authData?.session.access_token, {
             is_online: true,
             is_suspended: false,
             availability_status: 'available',
@@ -119,20 +116,16 @@ export const useDriverStore = create<DriverStore>((set, get) => {
 
           await startBackgroundUpdates();
 
-          await webSocketService.connect(
-            state.driverId,
-            state.driverVehicleType,
-            state.driverVehiclePlateNumber
-          );
+          await webSocketService.connect();
         } else {
-          if (!state.accessToken) {
+          if (!state.authData?.session.access_token) {
             throw new Error('Missing access token');
           }
 
           await stopBackgroundUpdates();
           await webSocketService.disconnect();
 
-          await updateDriverProfileApi(state.accessToken, {
+          await updateDriverProfileApi(state.authData?.session.access_token, {
             is_online: false,
             is_suspended: false,
             availability_status: 'not_available',
@@ -158,8 +151,6 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         set({ isLoading: false });
       }
     },
-
-    setWalletBalance: (balance) => set({ walletBalance: balance }),
     syncOnlineStatus: async () => {
       // Get current state
       const state = get();
@@ -172,7 +163,7 @@ export const useDriverStore = create<DriverStore>((set, get) => {
       }
 
       // Check if access token is present
-      if (!state.accessToken) {
+      if (!state.authData?.session.access_token) {
         console.error('Missing access token');
         set({ isLoading: false, checkInitialOnlineStatus: false });
         return;
@@ -200,29 +191,50 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         // Update lastSync timestamp before making the API call
         set({ lastSync: now, checkInitialOnlineStatus: true });
 
-        const response = await getDriverProfileApi(state.accessToken);
+        const response = await getDriverProfileApi(
+          state.authData?.session.access_token
+        );
 
-        set({ availability_status: response.data?.availability_status });
+        const availabilityStatus = response.data?.availability_status;
+
+        set({ availabilityStatus });
+
+        await AsyncStorage.setItem(
+          DRIVER_AVAILABILITY_STATUS_KEY,
+          availabilityStatus
+        );
+
+        if (
+          availabilityStatus === 'en_route_to_pickup' ||
+          availabilityStatus === 'waiting_at_pickup'
+        ) {
+          const rideData = await getActiveRideByDriver(
+            state.authData?.session.access_token
+          );
+
+          if (rideData.data) {
+            await AsyncStorage.setItem(
+              PICK_UP_LOCATION_KEY,
+              JSON.stringify(rideData.data.actual_pickup_coords)
+            );
+          }
+        } else {
+          await AsyncStorage.removeItem(PICK_UP_LOCATION_KEY);
+        }
 
         if (response.data?.is_online === true) {
           if (
-            state.driverId &&
-            state.driverVehicleType &&
-            state.driverVehiclePlateNumber
-          ) {    
-            await webSocketService.connect(
-              state.driverId,
-              state.driverVehicleType,
-              state.driverVehiclePlateNumber
-            );
+            state.authData?.driverId &&
+            state.authData?.driverVehicleType &&
+            state.authData?.driverVehiclePlateNumber
+          ) {
+            await webSocketService.connect();
 
             await startBackgroundUpdates();
-            
+
             set({ isOnline: true });
           }
-        } else if (
-          response.data?.is_online === false
-        ) {
+        } else if (response.data?.is_online === false) {
           await webSocketService.disconnect();
           await stopBackgroundUpdates();
 
@@ -235,6 +247,7 @@ export const useDriverStore = create<DriverStore>((set, get) => {
       }
       set({ isLoading: false });
     },
-    setAvailabilityStatus: (status) => set({ availability_status: status }),
+    setAvailabilityStatus: (status: AvailabilityStatus) =>
+      set({ availabilityStatus: status }),
   };
 });

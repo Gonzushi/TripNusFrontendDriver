@@ -4,6 +4,8 @@ import { router } from 'expo-router';
 import type { Socket } from 'socket.io-client';
 import { io } from 'socket.io-client';
 
+import { useDriverStore } from '@/lib/driver/store';
+
 import NotificationHandler from '../notification-handler';
 import {
   DRIVER_LOCATION_KEY,
@@ -21,19 +23,23 @@ const WEBSOCKET_URL = 'wss://ws.trip-nus.com';
 
 class WebSocketServiceClass {
   private socket: Socket | null = null;
-  private driverId: string | null = null;
-  private driverVehicleType: string | null = null;
-  private driverVehiclePlateNumber: string | null = null;
   private currentLocation: Location.LocationObject | null = null;
   private isConnecting = false;
   private hasSetupListeners = false;
   private lastRegisterAt: number = 0;
 
+  private get driverId() {
+    return useDriverStore.getState().authData?.driverId || null;
+  }
+  private get driverVehicleType() {
+    return useDriverStore.getState().authData?.driverVehicleType || null;
+  }
+  private get availabilityStatus() {
+    return useDriverStore.getState().availabilityStatus || null;
+  }
+
   constructor() {
     this.socket = null;
-    this.driverId = null;
-    this.driverVehicleType = null;
-    this.driverVehiclePlateNumber = null;
   }
 
   // Save current location to AsyncStorage
@@ -41,12 +47,20 @@ class WebSocketServiceClass {
     if (!this.currentLocation) return;
 
     try {
+      const minimalLocation = {
+        coords: {
+          latitude: this.currentLocation.coords.latitude,
+          longitude: this.currentLocation.coords.longitude,
+          speed: this.currentLocation.coords.speed ?? 0,
+          heading: this.currentLocation.coords.heading ?? 0,
+          accuracy: this.currentLocation.coords.accuracy ?? 0,
+        },
+        timestamp: Date.now(),
+      };
+
       await AsyncStorage.setItem(
         DRIVER_LOCATION_KEY,
-        JSON.stringify({
-          ...this.currentLocation,
-          timestamp: Date.now(),
-        })
+        JSON.stringify(minimalLocation)
       );
     } catch (error) {
       console.warn('⚠️ Failed to save location to storage:', error);
@@ -130,11 +144,7 @@ class WebSocketServiceClass {
   }
 
   // Connect to socket server
-  async connect(
-    driverId: string,
-    driverVehicleType: string,
-    driverVehiclePlateNumber: string
-  ): Promise<void> {
+  async connect(): Promise<void> {
     if (this.isConnecting) {
       console.log(
         '⚠️ WebSocket is currently connecting. Ignoring duplicate call.'
@@ -145,14 +155,9 @@ class WebSocketServiceClass {
     this.isConnecting = true;
 
     try {
-      if (
-        this.socket?.connected &&
-        this.driverId === driverId &&
-        this.driverVehicleType === driverVehicleType &&
-        this.driverVehiclePlateNumber === driverVehiclePlateNumber
-      ) {
+      if (this.socket?.connected) {
         console.log(
-          `✅ Websocket already connected with same driver info, connection: ${this.socket.connected}`
+          `✅ Websocket already connected with same driver info, connection: ${this.socket.id}`
         );
         await this.loadOrFetchLocation();
         await this.sendLocationUpdate();
@@ -169,10 +174,6 @@ class WebSocketServiceClass {
         console.error('❌ Location permission denied');
         return;
       }
-
-      this.driverId = driverId;
-      this.driverVehicleType = driverVehicleType;
-      this.driverVehiclePlateNumber = driverVehiclePlateNumber;
 
       return await new Promise<void>((resolve, reject) => {
         this.socket = io(WEBSOCKET_URL, {
@@ -212,6 +213,7 @@ class WebSocketServiceClass {
           reject(err);
         });
 
+        this.hasSetupListeners = false;
         this.setupEventListeners();
         if (DEBUG_MODE) this.watchAllSocketEvents(this.socket!);
       });
@@ -274,14 +276,13 @@ class WebSocketServiceClass {
 
     return {
       role: 'driver',
+      availabilityStatus: this.availabilityStatus,
       id: this.driverId,
       lat: this.currentLocation.coords.latitude,
       lng: this.currentLocation.coords.longitude,
       vehicle_type:
         (this.driverVehicleType?.toLowerCase() as 'motorcycle' | 'car') ||
         'unknown',
-      vehicle_plate: this.driverVehiclePlateNumber || 'Unknown',
-      status: 'available',
       update_via: 'websocket',
       last_updated_at: new Date().toISOString(),
       speed_kph: (this.currentLocation.coords.speed || 0) * 3.6,
@@ -354,7 +355,7 @@ class WebSocketServiceClass {
   }
 
   // Disconnect from server and reset internal state
-  async disconnect(fullReset = false) {
+  async disconnect() {
     console.log('❌ Disconnecting Websocket');
 
     this.cleanupEventListeners();
@@ -364,12 +365,6 @@ class WebSocketServiceClass {
     }
 
     this.cleanupSocketState();
-
-    if (fullReset) {
-      this.driverId = null;
-      this.driverVehicleType = null;
-      this.driverVehiclePlateNumber = null;
-    }
   }
 }
 

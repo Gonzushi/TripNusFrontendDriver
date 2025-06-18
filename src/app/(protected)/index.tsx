@@ -160,7 +160,7 @@ function OnlineStatusToggle({
 }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [visualState, setVisualState] = useState(isOnline);
-  const { checkInitialOnlineStatus, availability_status } = useDriverStore();
+  const { checkInitialOnlineStatus, availabilityStatus } = useDriverStore();
   const router = useRouter();
 
   // Update animation when status changes
@@ -178,7 +178,10 @@ function OnlineStatusToggle({
   }, [isOnline]);
 
   const handlePress = () => {
-    if (availability_status === 'busy') {
+    if (
+      availabilityStatus !== 'available' &&
+      availabilityStatus !== 'not_available'
+    ) {
       router.push('/active-ride/ride-details');
       return;
     }
@@ -212,7 +215,11 @@ function OnlineStatusToggle({
   };
 
   const getBackgroundColor = () => {
-    if (availability_status === 'busy') return '#059669'; // green-600
+    if (
+      availabilityStatus !== 'available' &&
+      availabilityStatus !== 'not_available'
+    )
+      return '#059669'; // green-600
     if (checkInitialOnlineStatus) return '#D1D5DB'; // gray-300 during initial check
     if (isDisabled) return '#D1D5DB'; // gray-300
     if (isLoading) {
@@ -223,7 +230,11 @@ function OnlineStatusToggle({
   };
 
   const getButtonText = () => {
-    if (availability_status === 'busy') return 'Sedang Menjalani Order';
+    if (
+      availabilityStatus !== 'available' &&
+      availabilityStatus !== 'not_available'
+    )
+      return 'Sedang Menjalani Order';
     if (isLoading || checkInitialOnlineStatus) {
       return checkInitialOnlineStatus
         ? 'Memeriksa Status...'
@@ -273,7 +284,8 @@ function OnlineStatusToggle({
               <>
                 <Ionicons
                   name={
-                    availability_status === 'busy'
+                    availabilityStatus !== 'available' &&
+                    availabilityStatus !== 'not_available'
                       ? 'car'
                       : visualState
                         ? 'power'
@@ -508,13 +520,9 @@ export default function Index() {
   const {
     isOnline,
     isLoading,
-    walletBalance,
     checkInitialOnlineStatus,
-    setAccessToken,
+    setAuthData,
     setOnline,
-    setDriverId,
-    setVehicleType,
-    setVehiclePlateNumber,
     syncOnlineStatus,
   } = useDriverStore();
 
@@ -609,15 +617,10 @@ export default function Index() {
     }, [])
   );
 
-  // Initialize driver ID
+  // Save authData to driver store
   useEffect(() => {
-    if (authData?.driverId) {
-      setAccessToken(authData.session.access_token);
-      setDriverId(authData.driverId);
-      setVehicleType(authData.driverVehicleType!);
-      setVehiclePlateNumber(authData.driverVehiclePlateNumber!);
-    }
-  }, [authData?.driverId, setDriverId]);
+    setAuthData(authData);
+  }, [authData]);
 
   // Load profile picture
   const refreshProfilePicture = async () => {
@@ -700,14 +703,14 @@ export default function Index() {
           isOnline={isOnline && !checkInitialOnlineStatus}
         />
 
-        <WalletBalance balance={walletBalance} />
+        <WalletBalance balance={0} />
 
         <StatsSection />
 
         <OnlineStatusToggle
           isOnline={isOnline}
           onToggle={handleToggleOnline}
-          isDisabled={walletBalance < 0}
+          isDisabled={false}
           hasLocationPermission={hasLocationPermission}
           isLoading={isLoading}
         />

@@ -81,10 +81,14 @@ export type RideData = {
   actual_dropoff_coords: Point | null;
   match_attempt?: MatchAttempt;
   status_reason: string | null;
+  drivers: {
+    auth_id: string;
+  };
   riders: {
     users: {
       phone: string;
     };
+    id: string;
     rating: number;
     first_name: string;
     last_name: string;

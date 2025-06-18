@@ -1,5 +1,6 @@
 export type RideRequestData = {
   type: 'NEW_RIDE_REQUEST';
+  vehicle_type: 'motorcycle' | 'car';
   ride_id: string;
   distance_to_pickup_km: number;
   distance_m: number;
