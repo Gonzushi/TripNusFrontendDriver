@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+import { getRideDriverApi } from '@/api/ride';
 import {
   startBackgroundUpdates,
   stopBackgroundUpdates,
@@ -14,7 +15,6 @@ import {
   PICK_UP_LOCATION_KEY,
 } from '../background/constants';
 import { type AvailabilityStatus } from '../background/types';
-import { getActiveRideByDriver } from '../ride/api';
 import { getDriverProfileApi, updateDriverProfileApi } from './api';
 
 type DriverStore = {
@@ -90,11 +90,6 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         return;
       }
 
-      await AsyncStorage.setItem(
-        DRIVER_AVAILABILITY_STATUS_KEY,
-        'available'
-      );
-
       try {
         if (status) {
           if (
@@ -113,6 +108,8 @@ export const useDriverStore = create<DriverStore>((set, get) => {
             decline_count: 0,
             missed_requests: 0,
           });
+
+          await state.setAvailabilityStatus('available');
 
           await startBackgroundUpdates();
 
@@ -199,28 +196,7 @@ export const useDriverStore = create<DriverStore>((set, get) => {
 
         set({ availabilityStatus });
 
-        await AsyncStorage.setItem(
-          DRIVER_AVAILABILITY_STATUS_KEY,
-          availabilityStatus
-        );
-
-        if (
-          availabilityStatus === 'en_route_to_pickup' ||
-          availabilityStatus === 'waiting_at_pickup'
-        ) {
-          const rideData = await getActiveRideByDriver(
-            state.authData?.session.access_token
-          );
-
-          if (rideData.data) {
-            await AsyncStorage.setItem(
-              PICK_UP_LOCATION_KEY,
-              JSON.stringify(rideData.data.actual_pickup_coords)
-            );
-          }
-        } else {
-          await AsyncStorage.removeItem(PICK_UP_LOCATION_KEY);
-        }
+        await state.setAvailabilityStatus(availabilityStatus);
 
         if (response.data?.is_online === true) {
           if (
@@ -247,7 +223,32 @@ export const useDriverStore = create<DriverStore>((set, get) => {
       }
       set({ isLoading: false });
     },
-    setAvailabilityStatus: (status: AvailabilityStatus) =>
-      set({ availabilityStatus: status }),
+    setAvailabilityStatus: async (status: AvailabilityStatus) => {
+      const state = get();
+
+      if (!state.authData?.session.access_token) {
+        return;
+      }
+
+      await AsyncStorage.setItem(DRIVER_AVAILABILITY_STATUS_KEY, status);
+
+      if (status === 'en_route_to_pickup' || status === 'waiting_at_pickup') {
+        const { data: rideData, error: rideError } = await getRideDriverApi(
+          state.authData?.session.access_token
+        );
+
+        if (!rideError && rideData) {
+          await AsyncStorage.setItem(
+            PICK_UP_LOCATION_KEY,
+            JSON.stringify({
+              latitude: rideData.planned_pickup_coords?.coordinates[1],
+              longitude: rideData.planned_pickup_coords?.coordinates[0],
+            })
+          );
+        }
+      } else {
+        await AsyncStorage.removeItem(PICK_UP_LOCATION_KEY);
+      }
+    },
   };
 });

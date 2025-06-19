@@ -30,7 +30,7 @@ import NotificationDebug from '@/lib/notification/notification-debug';
 import { getProfilePictureUri } from '@/lib/profile-picture';
 import { SafeView } from '@/lib/safe-view';
 
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 
 // Store for console logs
 const consoleLogStore = {

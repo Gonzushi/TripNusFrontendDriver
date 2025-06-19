@@ -18,10 +18,12 @@ export type FareBreakdown = {
 };
 
 export type RideStatus =
+  | 'searching'
   | 'requesting_driver'
   | 'driver_accepted'
   | 'driver_arrived'
   | 'in_progress'
+  | 'payment_in_progress'
   | 'completed'
   | 'cancelled';
 
@@ -81,6 +83,9 @@ export type RideData = {
   actual_dropoff_coords: Point | null;
   match_attempt?: MatchAttempt;
   status_reason: string | null;
+};
+
+export type RideDataDriver = RideData & {
   drivers: {
     auth_id: string;
   };
@@ -90,9 +95,72 @@ export type RideData = {
     };
     id: string;
     rating: number;
+    fist_name: string;
+    last_name: string;
+    completed_rides: number;
+    profile_picture_url: string;
+  };
+};
+
+export type RideDataRider = RideData & {
+  riders: {
+    auth_id: string;
+  };
+  drivers?: {
+    users: {
+      phone: string;
+    };
+    id: string;
+    rating: number;
     first_name: string;
     last_name: string;
+    vehicle_type: string;
+    vehicle_year: number;
+    vehicle_brand: string;
+    vehicle_color: string;
+    vehicle_model: string;
+    profile_picture_url: string;
+    vehicle_plate_number: string;
+    completed_rides?: number | null;
   };
+  driverLocation?: {
+    latitude: number;
+    longitude: number;
+    heading_deg: number;
+    speed_kph: number;
+  };
+};
+
+export type RideResponse = {
+  status: number;
+  code: string;
+  message: string;
+  error?: string;
+  data?: RideData;
+};
+
+export type CancelRideResponse = {
+  status: number;
+  message?: string;
+  code: string;
+  data: RideData;
+  error?: string;
+};
+
+export type CreateRidePayload = {
+  distance_m: number;
+  duration_s: number;
+  vehicle_type: VehicleType;
+  service_variant: ServiceVariant;
+  fare: number;
+  platform_fee: number;
+  driver_earning: number;
+  app_commission: number;
+  fare_breakdown: FareBreakdown;
+  planned_pickup_coords: [number, number];
+  planned_pickup_address: string;
+  planned_dropoff_coords: [number, number];
+  planned_dropoff_address: string;
 };
 
 export type UpdateRidePayload = {
@@ -104,39 +172,33 @@ export type UpdateRidePayload = {
   actual_dropoff_coords?: [number, number];
 };
 
-export type UpdateRideSuccessResponse = {
-  status: number;
-  message: string;
-  code: 'RIDE_UPDATED';
-  data: {
-    id: string;
-    status: RideStatus;
-    driver_id: string;
+export type ConfirmPickupPayload = {
+  ride_id: string;
+  driver_id: string;
+  actual_pickup_coords: {
+    latitude: number;
+    longitude: number;
   };
 };
 
-export type UpdateRideErrorResponse = {
-  status: number;
-  error: string;
-  message: string;
-  code: string;
+export type ConfirmDropoffPayload = {
+  ride_id: string;
+  driver_id: string;
+  actual_dropoff_coords: {
+    latitude: number;
+    longitude: number;
+  };
 };
 
-export type ApiRequestResponse<T> = {
-  data: T | null;
-  error: string | null;
+export type ConfirmPaymentPayload = {
+  ride_id: string;
+  driver_id: string;
 };
 
-export type RideResponse = {
+export type CreateRideResponse = {
   status: number;
   code: string;
   message: string;
   data: RideData;
-};
-
-export type RideErrorResponse = {
-  status: number;
-  code: string;
-  message: string;
-  error: string;
+  error?: string;
 };
