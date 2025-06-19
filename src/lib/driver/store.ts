@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+import { getDriverProfileApi, updateDriverProfileApi } from '@/api/driver';
 import { getRideDriverApi } from '@/api/ride';
+import { type AuthData } from '@/api/types/auth';
+import { type AvailabilityStatus } from '@/api/types/driver';
 import {
   startBackgroundUpdates,
   stopBackgroundUpdates,
@@ -9,13 +12,10 @@ import {
 import { webSocketService } from '@/lib/background/websocket-service';
 import { notificationEmitter } from '@/lib/notification-handler';
 
-import { type AuthData } from '../auth/types';
 import {
   DRIVER_AVAILABILITY_STATUS_KEY,
   PICK_UP_LOCATION_KEY,
 } from '../background/constants';
-import { type AvailabilityStatus } from '../background/types';
-import { getDriverProfileApi, updateDriverProfileApi } from './api';
 
 type DriverStore = {
   authData: AuthData | null;
@@ -95,25 +95,34 @@ export const useDriverStore = create<DriverStore>((set, get) => {
           if (
             !state.authData?.driverId ||
             !state.authData?.driverVehicleType ||
-            !state.authData?.driverVehiclePlateNumber ||
             !state.authData?.session.access_token
           ) {
             throw new Error('Missing driver information');
           }
 
-          await updateDriverProfileApi(state.authData?.session.access_token, {
-            is_online: true,
-            is_suspended: false,
-            availability_status: 'available',
-            decline_count: 0,
-            missed_requests: 0,
-          });
+          const { error: driverError } = await updateDriverProfileApi(
+            state.authData?.session.access_token,
+            {
+              is_online: true,
+              is_suspended: false,
+              availability_status: 'available',
+              decline_count: 0,
+              missed_requests: 0,
+            }
+          );
+
+          if (driverError) {
+            throw new Error(driverError);
+          }
 
           await state.setAvailabilityStatus('available');
 
           await startBackgroundUpdates();
 
-          await webSocketService.connect();
+          await webSocketService.connect(
+            state.authData?.driverId,
+            state.authData?.driverVehicleType
+          );
         } else {
           if (!state.authData?.session.access_token) {
             throw new Error('Missing access token');
@@ -188,29 +197,39 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         // Update lastSync timestamp before making the API call
         set({ lastSync: now, checkInitialOnlineStatus: true });
 
-        const response = await getDriverProfileApi(
-          state.authData?.session.access_token
-        );
+        const { data: driverData, error: driverError } =
+          await getDriverProfileApi(state.authData?.session.access_token);
 
-        const availabilityStatus = response.data?.availability_status;
+        if (driverError) {
+          throw new Error(driverError);
+        }
+
+        if (!driverData) {
+          throw new Error('Driver data not found');
+        }
+
+        const availabilityStatus = driverData?.availability_status;
 
         set({ availabilityStatus });
 
-        await state.setAvailabilityStatus(availabilityStatus);
+        await state.setAvailabilityStatus(availabilityStatus!);
 
-        if (response.data?.is_online === true) {
+        if (driverData.is_online === true) {
           if (
             state.authData?.driverId &&
             state.authData?.driverVehicleType &&
             state.authData?.driverVehiclePlateNumber
           ) {
-            await webSocketService.connect();
+            await webSocketService.connect(
+              state.authData?.driverId,
+              state.authData?.driverVehicleType
+            );
 
             await startBackgroundUpdates();
 
             set({ isOnline: true });
           }
-        } else if (response.data?.is_online === false) {
+        } else if (driverData?.is_online === false) {
           await webSocketService.disconnect();
           await stopBackgroundUpdates();
 

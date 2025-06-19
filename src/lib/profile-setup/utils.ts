@@ -1,3 +1,4 @@
+import { type DriverProfile } from '@/api/types/driver';
 import {
   type PhotoType,
   type UpdateDriverProfileData,
@@ -25,8 +26,8 @@ export function getFileName(type: PhotoType): string {
 // Function to format form data for submission
 export function formatFormDataForSubmission(
   data: FormInputData
-): UpdateDriverProfileData {
-  const formatted: Partial<UpdateDriverProfileData> = {
+): DriverProfile {
+  const formatted: Partial<DriverProfile> = {
     status: 'submitted',
   };
 
@@ -44,12 +45,12 @@ export function formatFormDataForSubmission(
         }
       } else if (key !== 'status') {
         // Skip driver_status as we set it above
-        formatted[key as keyof UpdateDriverProfileData] = value;
+        (formatted as Record<string, string>)[key] = value;
       }
     }
   });
 
-  return formatted as UpdateDriverProfileData;
+  return formatted as DriverProfile;
 }
 
 // Function to validate form data

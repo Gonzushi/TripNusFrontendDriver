@@ -5,9 +5,10 @@ import { router } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { updateDriverProfileApi } from '@/api/driver';
+
 import { AuthContext } from '../auth';
 import { registerBackgroundNotificationTask } from '../background/background-notification-task';
-import { updateDriverProfileApi } from '../driver';
 import NotificationHandler from '../notification-handler';
 import { type NotificationData } from '../notification-handler/types';
 import {

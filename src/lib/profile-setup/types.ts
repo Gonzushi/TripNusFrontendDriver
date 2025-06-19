@@ -1,8 +1,8 @@
-import { type UpdateDriverProfileData } from '@/lib/driver/types';
+import { type DriverProfile } from '@/api/types/driver';
 
 // Form data type for handling string inputs
 export type FormInputData = {
-  [K in keyof UpdateDriverProfileData]: string;
+  [K in keyof DriverProfile]: string;
 };
 
 // Uploaded documents state

@@ -2,8 +2,8 @@ import * as Location from 'expo-location';
 
 import {
   BACKGROUND_LOCATION_TASK,
-  DISTANCE_UPDATE_INTERVAL,
-  LOCATION_UPDATE_INTERVAL,
+  DISTANCE_UPDATE_INTERVAL_M,
+  LOCATION_UPDATE_INTERVAL_MS,
 } from './constants';
 
 // Request location permissions from the user
@@ -50,16 +50,16 @@ export async function startBackgroundUpdates(): Promise<boolean> {
         accuracy: Location.Accuracy.Balanced,
 
         // Time and distance intervals
-        timeInterval: LOCATION_UPDATE_INTERVAL,
-        distanceInterval: DISTANCE_UPDATE_INTERVAL,
+        timeInterval: LOCATION_UPDATE_INTERVAL_MS,
+        distanceInterval: DISTANCE_UPDATE_INTERVAL_M,
 
         // Optimize for battery life
         activityType: Location.ActivityType.AutomotiveNavigation,
         showsBackgroundLocationIndicator: true,
 
         // Defer updates slightly to batch them - iOS only
-        deferredUpdatesInterval: LOCATION_UPDATE_INTERVAL,
-        deferredUpdatesDistance: DISTANCE_UPDATE_INTERVAL,
+        deferredUpdatesInterval: LOCATION_UPDATE_INTERVAL_MS,
+        deferredUpdatesDistance: DISTANCE_UPDATE_INTERVAL_M,
 
         // Prevent unnecessary app state changes
         pausesUpdatesAutomatically: false,

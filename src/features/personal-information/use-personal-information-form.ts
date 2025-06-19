@@ -1,7 +1,8 @@
 import { useContext, useState } from 'react';
 
+import { updatePhoneApi } from '@/api/auth';
+import { updateDriverProfileApi } from '@/api/driver';
 import { AuthContext } from '@/lib/auth';
-import { updateDriverProfileApi, updatePhoneApi } from '@/lib/driver/api';
 
 interface FormData {
   firstName: string;
@@ -40,27 +41,33 @@ export const usePersonalInformationForm = () => {
       validateForm();
       setIsLoading(true);
 
+      if (!authData?.session.access_token) {
+        throw new Error('No access token found');
+      }
+
       // Update profile (name)
-      const profileData = await updateDriverProfileApi(
-        authData?.session.access_token || '',
+      const { error: profileError } = await updateDriverProfileApi(
+        authData?.session.access_token,
         {
           first_name: formData.firstName,
           last_name: formData.lastName,
         }
       );
 
-      if (profileData.status !== 200) {
-        throw new Error(profileData.message || 'Gagal memperbarui profil');
+      if (profileError) {
+        throw new Error(profileError || 'Gagal memperbarui profil');
       }
 
       // Update phone number
-      const phoneData = await updatePhoneApi(
-        authData?.session.access_token || '',
+      const { error: phoneError } = await updatePhoneApi(
+        authData?.session.access_token,
         '+' + formData.phoneNumber.trim()
       );
 
-      if (phoneData.status !== 200) {
-        throw new Error(phoneData.message || 'Gagal memperbarui nomor telepon');
+      console.log('error', phoneError, phoneError);
+
+      if (phoneError) {
+        throw new Error(phoneError || 'Gagal memperbarui nomor telepon');
       }
 
       // Update local state

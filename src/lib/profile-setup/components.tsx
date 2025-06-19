@@ -5,7 +5,9 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import React, { useRef, useState } from 'react';
 import {
   Alert,
+  Linking,
   Modal,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -420,31 +422,83 @@ export function ProfilePictureCamera({
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [hasShownPermissionRequest, setHasShownPermissionRequest] =
+    useState(false);
+
+  const handleRequestPermission = async () => {
+    try {
+      setHasShownPermissionRequest(true);
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert(
+          'Izin Kamera Diperlukan',
+          'Aplikasi membutuhkan izin kamera untuk mengambil foto profil. Silakan aktifkan izin kamera di pengaturan.',
+          [
+            { text: 'Batal', style: 'cancel' },
+            {
+              text: 'Buka Pengaturan',
+              onPress: () => {
+                // Open app settings
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              },
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error requesting camera permission:', error);
+      Alert.alert('Error', 'Gagal meminta izin kamera. Silakan coba lagi.');
+    }
+  };
+
+  // Reset permission request state when modal becomes visible
+  React.useEffect(() => {
+    if (visible) {
+      setHasShownPermissionRequest(false);
+    }
+  }, [visible]);
 
   if (!permission) return null;
 
-  if (!permission.granted) {
+  if (!permission.granted && !hasShownPermissionRequest) {
     return (
-      <Modal visible={visible} animationType="slide">
-        <View className="flex-1 items-center justify-center bg-white p-6">
-          <Text className="mb-4 text-center text-lg text-gray-900">
-            Kami membutuhkan izin untuk mengakses kamera
-          </Text>
-          <TouchableOpacity
-            className="rounded-xl bg-blue-600 px-6 py-3"
-            onPress={requestPermission}
-          >
-            <Text className="text-white">Berikan Izin</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="mt-4 rounded-xl px-6 py-3"
-            onPress={onClose}
-          >
-            <Text className="text-gray-600">Batal</Text>
-          </TouchableOpacity>
+      <Modal visible={visible} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/40">
+          <View className="w-8/12 max-w-md rounded-2xl bg-white p-6 shadow-lg">
+            <Text className="mb-4 text-center text-lg font-medium text-gray-900">
+              Kami membutuhkan izin untuk mengakses kamera
+            </Text>
+
+            <TouchableOpacity
+              className="rounded-xl bg-blue-600 px-6 py-3"
+              onPress={handleRequestPermission}
+            >
+              <Text className="text-center font-semibold text-white">
+                Berikan Izin
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="mt-3 rounded-xl border border-gray-300 px-6 py-3"
+              onPress={onClose}
+            >
+              <Text className="text-center font-medium text-gray-600">
+                Batal
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     );
+  }
+
+  // If permission is not granted and we've already shown the request, just return null
+  if (!permission.granted) {
+    return null;
   }
 
   const takePicture = async () => {

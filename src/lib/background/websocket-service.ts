@@ -4,10 +4,11 @@ import { router } from 'expo-router';
 import type { Socket } from 'socket.io-client';
 import { io } from 'socket.io-client';
 
-import { useDriverStore } from '@/lib/driver/store';
+import { type AvailabilityStatus } from '@/api/types/driver';
 
 import NotificationHandler from '../notification-handler';
 import {
+  DRIVER_AVAILABILITY_STATUS_KEY,
   DRIVER_LOCATION_KEY,
   INTERNAL_SOCKET_EVENTS,
   MAX_CACHE_AGE_MS,
@@ -27,19 +28,23 @@ class WebSocketServiceClass {
   private isConnecting = false;
   private hasSetupListeners = false;
   private lastRegisterAt: number = 0;
+  private driverId: string | null = null;
+  private driverVehicleType: string | null = null;
 
-  private get driverId() {
-    return useDriverStore.getState().authData?.driverId || null;
-  }
-  private get driverVehicleType() {
-    return useDriverStore.getState().authData?.driverVehicleType || null;
-  }
-  private get availabilityStatus() {
-    return useDriverStore.getState().availabilityStatus || null;
+  private async getAvailabilityStatus(): Promise<AvailabilityStatus | null> {
+    try {
+      const status = await AsyncStorage.getItem(DRIVER_AVAILABILITY_STATUS_KEY);
+      return status as AvailabilityStatus;
+    } catch (error) {
+      console.warn('Failed to get availability status:', error);
+      return null;
+    }
   }
 
   constructor() {
     this.socket = null;
+    this.driverId = null;
+    this.driverVehicleType = null;
   }
 
   // Save current location to AsyncStorage
@@ -144,7 +149,7 @@ class WebSocketServiceClass {
   }
 
   // Connect to socket server
-  async connect(): Promise<void> {
+  async connect(driverId: string, driverVehicleType: string): Promise<void> {
     if (this.isConnecting) {
       console.log(
         '⚠️ WebSocket is currently connecting. Ignoring duplicate call.'
@@ -155,7 +160,11 @@ class WebSocketServiceClass {
     this.isConnecting = true;
 
     try {
-      if (this.socket?.connected) {
+      if (
+        this.socket?.connected &&
+        this.driverId === driverId &&
+        this.driverVehicleType === driverVehicleType
+      ) {
         console.log(
           `✅ Websocket already connected with same driver info, connection: ${this.socket.id}`
         );
@@ -174,6 +183,9 @@ class WebSocketServiceClass {
         console.error('❌ Location permission denied');
         return;
       }
+
+      this.driverId = driverId;
+      this.driverVehicleType = driverVehicleType;
 
       return await new Promise<void>((resolve, reject) => {
         this.socket = io(WEBSOCKET_URL, {
@@ -270,13 +282,15 @@ class WebSocketServiceClass {
   }
 
   // Build driver data payload for register/update
-  private createDriverData(): DriverData {
+  private async createDriverData(): Promise<DriverData> {
     if (!this.driverId || !this.currentLocation)
       throw new Error('Missing driver data');
 
+    const availabilityStatus = await this.getAvailabilityStatus();
+
     return {
       role: 'driver',
-      availabilityStatus: this.availabilityStatus,
+      availabilityStatus: availabilityStatus || 'available',
       id: this.driverId,
       lat: this.currentLocation.coords.latitude,
       lng: this.currentLocation.coords.longitude,
@@ -300,7 +314,7 @@ class WebSocketServiceClass {
     this.lastRegisterAt = now;
 
     try {
-      const data = this.createDriverData();
+      const data = await this.createDriverData();
 
       this.socket.emit('register', data, async (res: { success: boolean }) => {
         if (res.success) {
@@ -319,7 +333,7 @@ class WebSocketServiceClass {
     if (!this.socket || !this.driverId || !this.currentLocation) return;
 
     try {
-      const data = this.createDriverData();
+      const data = await this.createDriverData();
       this.socket.emit('driver:updateLocation', data);
       console.log(
         `📍 Location Websocket - Lat: ${this.currentLocation.coords.latitude.toFixed(

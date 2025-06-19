@@ -3,13 +3,11 @@ import { useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import { Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { updatePhoneApi } from '@/api/auth';
+import { updateDriverProfileApi } from '@/api/driver';
 import { AuthContext } from '@/lib/auth';
-import {
-  type ProfileFormData,
-  updateDriverProfileApi,
-  updatePhoneApi,
-  validateProfileForm,
-} from '@/lib/driver';
+import { type ProfileFormData } from '@/types/profile-setup';
+import { validateProfileForm } from '@/utils/profile-setup';
 
 // Logo component
 function Logo() {
@@ -148,7 +146,11 @@ export default function ProfileSetup() {
 
   // Effects
   useEffect(() => {
-    if (authData?.driverFirstName && authData?.driverLastName && authData?.phone) {
+    if (
+      authData?.driverFirstName &&
+      authData?.driverLastName &&
+      authData?.phone
+    ) {
       router.replace('/profile-setup-3');
     }
   }, [authData]);
@@ -176,7 +178,7 @@ export default function ProfileSetup() {
       }
 
       // Update profile
-      const profileData = await updateDriverProfileApi(
+      const { error: profileError } = await updateDriverProfileApi(
         authData.session.access_token,
         {
           first_name: formData.firstName,
@@ -184,18 +186,18 @@ export default function ProfileSetup() {
         }
       );
 
-      if (profileData.status !== 200) {
-        throw new Error(profileData.message || 'Gagal memperbarui profil');
+      if (profileError) {
+        throw new Error(profileError || 'Gagal memperbarui profil');
       }
 
       // Update phone number
-      const phoneData = await updatePhoneApi(
+      const { error: phoneError } = await updatePhoneApi(
         authData.session.access_token,
         formData.phoneNumber
       );
 
-      if (phoneData.status !== 200) {
-        throw new Error(phoneData.message || 'Gagal memperbarui nomor telepon');
+      if (phoneError) {
+        throw new Error(phoneError || 'Gagal memperbarui nomor telepon');
       }
 
       // Update auth data with both profile and phone updates

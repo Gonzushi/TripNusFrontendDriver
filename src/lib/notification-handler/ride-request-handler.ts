@@ -1,7 +1,8 @@
 import { type Router } from 'expo-router';
 
+import { calculateDuration } from '@/utils';
+
 import { type RideRequestData } from '../notification-handler/types';
-import { calculateDuration } from '../ride/utils';
 
 let lastRideRequestId: string | null = null;
 let lastRequestTime = 0;

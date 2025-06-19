@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import React, { useContext, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 
+import { updateDriverProfileApi, uploadDriverPictureApi } from '@/api/driver';
 import { AuthContext } from '@/lib/auth';
-import { updateDriverProfileApi, uploadDriverPhotoApi } from '@/lib/driver/api';
 import { type PhotoType } from '@/lib/driver/types';
 import {
   DateInput,
@@ -127,21 +127,21 @@ export default function ProfileSetup3() {
             type: 'image/jpeg',
             name: fileName,
           });
+
           formData.append('photoType', type);
 
-          const uploadResponse = await uploadDriverPhotoApi(
+          const { error: uploadError } = await uploadDriverPictureApi(
             authData!.session.access_token,
             formData
           );
 
-          if (uploadResponse.status === 200) {
+          if (!uploadError) {
             setUploadedDocs((prev) => ({ ...prev, [type]: true }));
             Alert.alert('Sukses', 'Dokumen berhasil diupload');
           } else {
             Alert.alert(
               'Error',
-              uploadResponse.message ||
-                'Gagal mengupload dokumen. Silakan coba lagi.'
+              uploadError || 'Gagal mengupload dokumen. Silakan coba lagi.'
             );
           }
         } catch (error) {
@@ -177,19 +177,19 @@ export default function ProfileSetup3() {
       });
       formData.append('photoType', 'profile');
 
-      const uploadResponse = await uploadDriverPhotoApi(
+      const { error: uploadError } = await uploadDriverPictureApi(
         authData!.session.access_token,
         formData
       );
 
-      if (uploadResponse.status === 200) {
+      if (!uploadError) {
         setProfilePictureUploaded(true);
         setUploadedDocs((prev) => ({ ...prev, profile: true }));
         Alert.alert('Sukses', 'Foto profil berhasil diupload');
       } else {
         Alert.alert(
           'Error',
-          uploadResponse.message || 'Gagal mengupload foto. Silakan coba lagi.'
+          uploadError || 'Gagal mengupload foto. Silakan coba lagi.'
         );
       }
     } catch (err) {
@@ -249,7 +249,7 @@ export default function ProfileSetup3() {
       // Format the data before submission
       const formattedData = formatFormDataForSubmission(formData);
 
-      const response = await updateDriverProfileApi(
+      const { error: updateError } = await updateDriverProfileApi(
         authData!.session.access_token,
         {
           ...formattedData,
@@ -257,7 +257,7 @@ export default function ProfileSetup3() {
         }
       );
 
-      if (response.status === 200) {
+      if (!updateError) {
         await setAuthData({
           ...authData!,
           driverStatus: 'submitted',

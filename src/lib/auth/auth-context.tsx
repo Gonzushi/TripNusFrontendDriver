@@ -9,12 +9,6 @@ import React, {
 import { ActivityIndicator, Alert, View } from 'react-native';
 
 import {
-  clearProfilePicture,
-  downloadAndSaveProfilePicture,
-} from '@/lib/profile-picture';
-
-import { useDriverStore } from '../driver/store';
-import {
   changePasswordApi,
   forgotPasswordApi,
   loginApi,
@@ -22,13 +16,16 @@ import {
   refreshTokenApi,
   registerApi,
   resendActivationApi,
-} from './api';
-import { AUTH_STORAGE_KEY } from './constants';
+} from '@/api/auth';
+import { type AuthData } from '@/api/types/auth';
+import { AUTH_STORAGE_KEY } from '@/constants';
 import {
-  type AuthContextType,
-  type AuthData,
-  type AuthStateInternal,
-} from './types';
+  clearProfilePicture,
+  downloadAndSaveProfilePicture,
+} from '@/lib/profile-picture';
+
+import { type AuthContextType, type AuthStateInternal } from '../../types/auth';
+import { useDriverStore } from '../driver/store';
 
 // Create context with default values
 export const AuthContext = createContext<AuthContextType>({
@@ -77,51 +74,61 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     if (data.session.expires_at > now) return data;
 
-    const newData = await refreshTokenApi(data.session.refresh_token);
+    const { data: tokenData, error: tokenError } = await refreshTokenApi(
+      data.session.refresh_token
+    );
 
-    if (newData) {
-      await updateAuthState({ isLoggedIn: true, data: newData });
+    if (!tokenError) {
+      await updateAuthState({ isLoggedIn: true, data: tokenData });
     } else {
       await updateAuthState({ isLoggedIn: false, data: null });
     }
-    return newData;
+    return tokenData;
   };
 
   const refreshToken = async (data: AuthData): Promise<AuthData | null> => {
-    const newData = await refreshTokenApi(data.session.refresh_token);
-    if (newData) {
-      await updateAuthState({ isLoggedIn: true, data: newData });
+    const { data: tokenData, error: tokenError } = await refreshTokenApi(
+      data.session.refresh_token
+    );
+    if (!tokenError) {
+      await updateAuthState({ isLoggedIn: true, data: tokenData });
     }
-    return newData;
+    return tokenData;
   };
 
   // Auth Actions
   const logIn = async (email: string, password: string) => {
-    const { data, error } = await loginApi(email, password);
+    const { data: loginData, error: loginError } = await loginApi(
+      email,
+      password
+    );
 
-    if (data) {
-      await updateAuthState({ isLoggedIn: true, data });
-      if (data.driverProfilePictureUrl) {
+    if (!loginError && loginData) {
+      await updateAuthState({ isLoggedIn: true, data: loginData });
+      if (loginData.driverProfilePictureUrl) {
         await downloadAndSaveProfilePicture(
-          data.user.id,
-          data.driverProfilePictureUrl
+          loginData.user.id,
+          loginData.driverProfilePictureUrl
         );
       }
       if (router.canDismiss()) {
         router.dismissAll();
       }
       router.replace('/');
-    } else if (error === 'Email not confirmed') {
+    } else if (loginError === 'Email not confirmed') {
       router.push({ pathname: '/resend', params: { email } });
     } else {
-      Alert.alert('Gagal Masuk', error || 'Email atau kata sandi tidak valid.');
+      Alert.alert(
+        'Gagal Masuk',
+        loginError || 'Email atau kata sandi tidak valid.'
+      );
     }
   };
 
   const register = async (email: string, password: string) => {
-    const { error } = await registerApi(email, password);
+    const { error: registerError } = await registerApi(email, password);
 
-    if (!error) {
+    if (!registerError) {
       Alert.alert(
         'Registrasi Berhasil',
         'Silakan periksa email Anda untuk mengaktifkan akun.',
@@ -129,9 +136,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       );
     } else {
       // Translate specific error messages
-      let translatedError = error;
+      let translatedError = registerError;
       if (
-        error ===
+        registerError ===
         'This email is already registered. Please log in or reset your password.'
       ) {
         translatedError =
@@ -146,11 +153,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   const resendActivation = async (email: string): Promise<boolean> => {
-    const { error } = await resendActivationApi(email);
+    const { error: resendError } = await resendActivationApi(email);
 
-    if (!error) return true;
+    if (!resendError) return true;
 
-    Alert.alert('Error', error || 'Gagal mengirim email aktivasi');
+    Alert.alert('Error', resendError || 'Gagal mengirim email aktivasi');
     return false;
   };
 
@@ -159,9 +166,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     tokenHash: string,
     password: string
   ) => {
-    const { error } = await changePasswordApi(type, tokenHash, password);
+    const { error: changePasswordError } = await changePasswordApi(
+      type,
+      tokenHash,
+      password
+    );
 
-    if (!error) {
+    if (!changePasswordError) {
       Alert.alert('Berhasil', 'Kata sandi berhasil diubah', [
         {
           text: 'OK',
@@ -174,7 +185,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         },
       ]);
     } else {
-      Alert.alert('Error', error || 'Gagal mengubah kata sandi', [
+      Alert.alert('Error', changePasswordError || 'Gagal mengubah kata sandi', [
         {
           text: 'OK',
           onPress: () => {
@@ -189,9 +200,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   const forgotPassword = async (email: string) => {
-    const { error } = await forgotPasswordApi(email);
+    const { error: forgotPasswordError } = await forgotPasswordApi(email);
 
-    if (!error) {
+    if (!forgotPasswordError) {
       Alert.alert(
         'Reset Kata Sandi',
         'Jika akun dengan email ini ada, Anda akan menerima instruksi untuk mengatur ulang kata sandi.',
@@ -210,7 +221,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } else {
       Alert.alert(
         'Error',
-        error || 'Gagal memproses permintaan reset kata sandi'
+        forgotPasswordError || 'Gagal memproses permintaan reset kata sandi'
       );
     }
   };
@@ -218,7 +229,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const logOut = async () => {
     try {
       if (authState.data?.session.access_token) {
-        await logoutApi(authState.data.session.access_token);
+        const { error: logoutError } = await logoutApi(
+          authState.data.session.access_token
+        );
+        if (logoutError) {
+          Alert.alert('Error', logoutError || 'Gagal logout');
+        }
       }
     } catch (error) {
       console.error('Error during logout:', error);

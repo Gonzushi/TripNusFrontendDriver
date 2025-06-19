@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useContext, useState } from 'react';
 import { Alert, Text, TouchableOpacity, View } from 'react-native';
 
+import { createDriverProfileApi } from '@/api/driver';
 import { AuthContext } from '@/lib/auth';
-import { createDriverProfileApi } from '@/lib/driver/api';
 
 // Logo component with TripNus branding
 function Logo() {
@@ -104,14 +104,13 @@ export default function ProfileSetup2() {
 
     setIsLoading(true);
     try {
-      const response = await createDriverProfileApi(
-        authData.session.access_token
-      );
+      const { data: driverData, error: driverError } =
+        await createDriverProfileApi(authData.session.access_token);
 
-      if (response) {
+      if (!driverError && driverData) {
         await setAuthData({
           ...authData,
-          driverId: response.data.id,
+          driverId: driverData.id!,
         });
         // Use replace instead of push to avoid navigation stack issues
         router.replace('/profile-setup-2');

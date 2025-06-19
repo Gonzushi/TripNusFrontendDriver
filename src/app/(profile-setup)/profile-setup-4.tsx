@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import React, { useContext, useState } from 'react';
 import { Alert, Text, TouchableOpacity, View } from 'react-native';
 
+import { updateDriverProfileApi } from '@/api/driver';
 import { AuthContext } from '@/lib/auth';
-import { updateDriverProfileApi } from '@/lib/driver/api';
 
 const DEBUG_MODE = false;
 // Logo component
@@ -188,14 +188,14 @@ export default function ProfileSetup4() {
 
     setIsConfirming(true);
     try {
-      const response = await updateDriverProfileApi(
+      const { error: updateError } = await updateDriverProfileApi(
         authData.session.access_token,
         {
           status: 'confirmed',
         }
       );
 
-      if (response.status === 200) {
+      if (!updateError) {
         await setAuthData({
           ...authData,
           driverStatus: 'confirmed',

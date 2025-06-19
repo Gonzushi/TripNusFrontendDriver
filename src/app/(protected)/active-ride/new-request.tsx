@@ -16,9 +16,9 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
+import { confirmRideApi, rejectRideApi } from '@/api/ride';
 import { AuthContext } from '@/lib/auth';
 import { type RideRequestData } from '@/lib/notification-handler/types';
-import { confirmRide, rejectRide } from '@/lib/ride/api';
 import { SafeView } from '@/lib/safe-view';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -96,11 +96,10 @@ export default function NewRideRequest() {
 
     setIsLoading(true);
     try {
-      const { error } = await confirmRide(
-        authData!.session.access_token,
-        data.ride_id,
-        authData!.driverId!
-      );
+      const { error } = await confirmRideApi(authData!.session.access_token, {
+        ride_id: data.ride_id,
+        driver_id: authData!.driverId!,
+      });
 
       if (!error) {
         // Navigate to ride details without passing data
@@ -149,11 +148,10 @@ export default function NewRideRequest() {
 
     setIsLoading(true);
     try {
-      const { error } = await rejectRide(
-        authData!.session.access_token,
-        data.ride_id,
-        authData!.driverId!
-      );
+      const { error } = await rejectRideApi(authData!.session.access_token, {
+        ride_id: data.ride_id,
+        driver_id: authData!.driverId!,
+      });
 
       if (error) {
         Alert.alert(

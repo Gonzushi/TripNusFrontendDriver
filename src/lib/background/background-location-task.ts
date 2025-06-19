@@ -4,9 +4,9 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import type * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 
-import { AUTH_STORAGE_KEY } from '@/lib/auth/constants';
+import { type AuthData } from '@/api/types/auth';
+import { AUTH_STORAGE_KEY } from '@/constants';
 
-import { type AuthData } from '../auth/types';
 import {
   API_URL,
   BACKGROUND_LOCATION_TASK,
@@ -219,7 +219,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async (taskData) => {
         Authorization: `Bearer ${authData.accessToken}`,
       },
     });
-    
+
     lastUpdateTime = Date.now();
     lastLocation = location;
 

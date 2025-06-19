@@ -3,7 +3,8 @@ import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import path from 'path';
 
-import { uploadDriverPhotoApi } from '../driver';
+import { uploadDriverPictureApi } from '@/api/driver';
+
 import { SUPABASE_STORAGE_URL } from './constants';
 import { type PreparedImage } from './types';
 import { compressImage, getFileInfo, getStorageKey } from './utils';
@@ -157,15 +158,15 @@ export const updateProfilePicture = async (
 
     // Upload image
 
-    const response = await uploadDriverPhotoApi(accessToken, formData);
+    const { data, error } = await uploadDriverPictureApi(accessToken, formData);
 
-    if (response.status !== 200) {
-      throw new Error(response.message || 'Gagal mengunggah foto profil');
+    if (error) {
+      throw new Error(error || 'Gagal mengunggah foto profil');
     }
 
     return {
       success: true,
-      pictureUrl: response!.data?.profile_picture_url,
+      pictureUrl: data?.profile_picture_url,
     };
   } catch (error) {
     console.error('Error updating profile picture:', error);
