@@ -4,8 +4,8 @@ import React, { useContext, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 
 import { updateDriverProfileApi, uploadDriverPictureApi } from '@/api/driver';
+import { type PhotoType } from '@/api/types/driver';
 import { AuthContext } from '@/lib/auth';
-import { type PhotoType } from '@/lib/driver/types';
 import {
   DateInput,
   DebugButton,

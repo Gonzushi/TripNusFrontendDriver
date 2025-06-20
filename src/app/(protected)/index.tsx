@@ -25,10 +25,10 @@ import {
 } from 'react-native';
 
 import { AuthContext } from '@/lib/auth';
-import { useDriverStore } from '@/lib/driver/store';
 import NotificationDebug from '@/lib/notification/notification-debug';
 import { getProfilePictureUri } from '@/lib/profile-picture';
 import { SafeView } from '@/lib/safe-view';
+import { useDriverStore } from '@/store';
 
 const DEBUG_MODE = false;
 

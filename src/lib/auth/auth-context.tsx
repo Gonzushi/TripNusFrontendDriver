@@ -24,8 +24,8 @@ import {
   downloadAndSaveProfilePicture,
 } from '@/lib/profile-picture';
 
+import { useDriverStore } from '../../store';
 import { type AuthContextType, type AuthStateInternal } from '../../types/auth';
-import { useDriverStore } from '../driver/store';
 
 // Create context with default values
 export const AuthContext = createContext<AuthContextType>({

@@ -2,9 +2,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import Env from '@/lib/env';
-
-const EAS_PROJECT_ID = Env.EAS_PROJECT_ID;
+import { EAS_PROJECT_ID } from '@/constants';
 
 // Define the background notification task handler
 Notifications.registerTaskAsync(

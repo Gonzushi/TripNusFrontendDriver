@@ -15,7 +15,7 @@ import { notificationEmitter } from '@/lib/notification-handler';
 import {
   DRIVER_AVAILABILITY_STATUS_KEY,
   PICK_UP_LOCATION_KEY,
-} from '../background/constants';
+} from './lib/background/constants';
 
 type DriverStore = {
   authData: AuthData | null;
@@ -210,7 +210,7 @@ export const useDriverStore = create<DriverStore>((set, get) => {
 
         const availabilityStatus = driverData?.availability_status;
 
-        set({ availabilityStatus });
+        console.log('🔵 Driver Availability Status:', availabilityStatus);
 
         await state.setAvailabilityStatus(availabilityStatus!);
 
@@ -249,11 +249,20 @@ export const useDriverStore = create<DriverStore>((set, get) => {
         return;
       }
 
+      set({ availabilityStatus: status });
+
       await AsyncStorage.setItem(DRIVER_AVAILABILITY_STATUS_KEY, status);
 
       if (status === 'en_route_to_pickup' || status === 'waiting_at_pickup') {
         const { data: rideData, error: rideError } = await getRideDriverApi(
           state.authData?.session.access_token
+        );
+
+        console.log(
+          '🔵 Pickup Location:',
+          rideData?.planned_dropoff_coords.coordinates[1],
+          ',',
+          rideData?.planned_dropoff_coords.coordinates[0]
         );
 
         if (!rideError && rideData) {

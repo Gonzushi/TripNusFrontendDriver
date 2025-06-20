@@ -1,21 +1,19 @@
-// File: lib/notification/notification-provider.tsx
-
 import type * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { updateDriverProfileApi } from '@/api/driver';
+import { AuthContext } from '@/lib/auth';
+import { registerBackgroundNotificationTask } from '@/lib/background/background-notification-task';
+import NotificationHandler from '@/lib/notification-handler';
+import { type NotificationData } from '@/types/ride-request';
 
-import { AuthContext } from '../auth';
-import { registerBackgroundNotificationTask } from '../background/background-notification-task';
-import NotificationHandler from '../notification-handler';
-import { type NotificationData } from '../notification-handler/types';
 import {
   addNotificationReceivedListener,
   addNotificationResponseReceivedListener,
   registerForPushNotificationsAsync,
-} from './notifications';
+} from './notifications-config';
 
 type NotificationContextValue = {
   expoPushToken: string | null;

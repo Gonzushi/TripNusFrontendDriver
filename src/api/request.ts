@@ -1,13 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
-import { AUTH_STORAGE_KEY } from '@/constants';
-import Env from '@/lib/env';
+import { API_BASE_URL, AUTH_STORAGE_KEY } from '@/constants';
 
 import { type ApiResponse } from './types/api';
 import { type AuthData } from './types/auth';
-
-const API_BASE_URL = Env.API_URL;
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 

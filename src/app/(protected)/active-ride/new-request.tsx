@@ -17,9 +17,12 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { confirmRideApi, rejectRideApi } from '@/api/ride';
+import { type AvailabilityStatus } from '@/api/types/driver';
 import { AuthContext } from '@/lib/auth';
-import { type RideRequestData } from '@/lib/notification-handler/types';
+import { webSocketService } from '@/lib/background/websocket-service';
 import { SafeView } from '@/lib/safe-view';
+import { useDriverStore } from '@/store';
+import { type RideRequestData } from '@/types/ride-request';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -34,6 +37,7 @@ export default function NewRideRequest() {
   const router = useRouter();
   const params = useLocalSearchParams<NewRideRequestParams>();
   const [isLoading, setIsLoading] = useState(false);
+  const { setAvailabilityStatus } = useDriverStore();
 
   if (!params.data) {
     router.back();
@@ -103,6 +107,8 @@ export default function NewRideRequest() {
 
       if (!error) {
         // Navigate to ride details without passing data
+        setAvailabilityStatus('en_route_to_pickup' as AvailabilityStatus);
+        await webSocketService.sendLocationUpdate();
         router.replace('/active-ride/ride-details');
       } else {
         let message = 'Penumpang telah membatalkan perjalanan.';

@@ -1,6 +1,4 @@
-// src/api/driver/index.ts
-
-import Env from '@env';
+import { API_BASE_URL } from '@/constants';
 
 import { apiRequest } from './request';
 import {
@@ -8,8 +6,6 @@ import {
   type NearbyDriversResponse,
   type UploadDriverPictureResponse,
 } from './types/driver';
-
-const API_URL = Env.API_URL;
 
 // Create driver profile
 export const createDriverProfileApi = async (accessToken: string) => {
@@ -26,7 +22,7 @@ export const uploadDriverPictureApi = async (
   data: UploadDriverPictureResponse | null;
   error: string | null;
 }> => {
-  const response = await fetch(`${API_URL}/driver/picture`, {
+  const response = await fetch(`${API_BASE_URL}/driver/picture`, {
     method: 'PATCH',
     headers: {
       accept: 'application/json',

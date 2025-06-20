@@ -329,7 +329,7 @@ class WebSocketServiceClass {
   }
 
   // Emit location update to server
-  private async sendLocationUpdate() {
+  async sendLocationUpdate() {
     if (!this.socket || !this.driverId || !this.currentLocation) return;
 
     try {
@@ -337,6 +337,30 @@ class WebSocketServiceClass {
       this.socket.emit('driver:updateLocation', data);
       console.log(
         `📍 Location Websocket - Lat: ${this.currentLocation.coords.latitude.toFixed(
+          6
+        )}, Lng: ${this.currentLocation.coords.longitude.toFixed(6)}, Speed: ${(
+          (this.currentLocation.coords.speed || 0) * 3.6
+        ).toFixed(
+          1
+        )} km/h, Heading: ${(this.currentLocation.coords.heading || 0).toFixed(1)}°`
+      );
+    } catch (error) {
+      console.error('Failed to send location update:', error);
+    }
+  }
+
+  async sendLocationUpdateManual(location: Location.LocationObject) {
+    if (!this.socket || !this.driverId) return;
+
+    this.currentLocation = location;
+
+    await this.saveCurrentLocation();
+
+    try {
+      const data = await this.createDriverData();
+      this.socket.emit('driver:updateLocation', data);
+      console.log(
+        `📍 Location Websocket Manual - Lat: ${this.currentLocation.coords.latitude.toFixed(
           6
         )}, Lng: ${this.currentLocation.coords.longitude.toFixed(6)}, Speed: ${(
           (this.currentLocation.coords.speed || 0) * 3.6

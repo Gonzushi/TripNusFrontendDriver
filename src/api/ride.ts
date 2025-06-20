@@ -30,10 +30,10 @@ export const updateRideApi = (
   });
 
 export const getRideRiderApi = (accessToken: string) =>
-  apiRequest<RideDataRider>('/ride/rider', 'GET', { accessToken });
+  apiRequest<RideDataRider>('/ride/active-ride-by-rider', 'GET', { accessToken });
 
 export const getRideDriverApi = (accessToken: string) =>
-  apiRequest<RideDataDriver>('/ride/driver', 'GET', { accessToken });
+  apiRequest<RideDataDriver>('/ride/active-ride-by-driver', 'GET', { accessToken });
 
 export const confirmRideApi = (
   accessToken: string,
@@ -75,7 +75,7 @@ export const driverArrivedAtPickupApi = (
   accessToken: string,
   payload: { ride_id: string; driver_id: string }
 ) =>
-  apiRequest<undefined, typeof payload>('/ride/arrived', 'POST', {
+  apiRequest<undefined, typeof payload>('/ride/driver-arrived', 'POST', {
     accessToken,
     body: payload,
   });
@@ -107,7 +107,7 @@ export const confirmPaymentByDriverApi = (
   payload: ConfirmPaymentPayload
 ) =>
   apiRequest<undefined, ConfirmPaymentPayload>(
-    '/ride/confirm-payment',
+    '/ride/confirm-payment-by-driver',
     'POST',
     {
       accessToken,

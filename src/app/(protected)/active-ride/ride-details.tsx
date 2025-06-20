@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, {
   useCallback,
@@ -29,12 +30,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { cancelByDriverApi, getRideDriverApi } from '@/api/ride';
+import {
+  cancelByDriverApi,
+  confirmDropoffByDriverApi,
+  confirmPickupByDriverApi,
+  driverArrivedAtPickupApi,
+  getRideDriverApi,
+} from '@/api/ride';
+import { type AvailabilityStatus } from '@/api/types/driver';
 import { type RideDataDriver } from '@/api/types/ride';
 import { AuthContext } from '@/lib/auth';
-import { useDriverStore } from '@/lib/driver/store';
+import { webSocketService } from '@/lib/background/websocket-service';
 import { SUPABASE_STORAGE_URL } from '@/lib/profile-picture/constants';
 import { SafeView } from '@/lib/safe-view';
+import { useDriverStore } from '@/store';
 
 type RideStatus =
   | 'searcching'
@@ -170,18 +179,88 @@ export default function RideDetails() {
   const threshold = sliderWidth * 0.8;
 
   // Handlers
-  const handleArriveConfirmation = () => {
-    setRideStatus('driver_arrived');
+  const handleArriveConfirmation = async () => {
+    if (!authData?.session.access_token || !rideData) return;
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    const { error } = await driverArrivedAtPickupApi(
+      authData.session.access_token,
+      { ride_id: rideData.id, driver_id: authData.driverId! }
+    );
+
+    if (error) {
+      throw new Error(error);
+    } else {
+      setAvailabilityStatus('driver_arrived' as AvailabilityStatus);
+      webSocketService.sendLocationUpdateManual(location);
+      setRideStatus('driver_arrived');
+      translateX.value = withSpring(0, { damping: 15 });
+    }
+  };
+
+  const handlePickupConfirmation = async () => {
+    if (!authData?.session.access_token || !rideData) return;
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    const actualPickupCoords = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+
+    const { error } = await confirmPickupByDriverApi(
+      authData.session.access_token,
+      {
+        ride_id: rideData.id,
+        driver_id: authData.driverId!,
+        actual_pickup_coords: actualPickupCoords,
+      }
+    );
+
+    if (error) {
+      throw new Error(error);
+    } else {
+      setAvailabilityStatus('in_progress' as AvailabilityStatus);
+      webSocketService.sendLocationUpdateManual(location);
+      setRideStatus('in_progress');
+    }
+
     translateX.value = withSpring(0, { damping: 15 });
   };
 
-  const handlePickupConfirmation = () => {
-    setRideStatus('in_progress');
-    translateX.value = withSpring(0, { damping: 15 });
-  };
+  const handleDropoffConfirmation = async () => {
+    if (!authData?.session.access_token || !rideData) return;
 
-  const handleDropoffConfirmation = () => {
-    console.log('Passenger dropped off');
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    const actualDropoffCoords = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+
+    const { error } = await confirmDropoffByDriverApi(
+      authData.session.access_token,
+      {
+        ride_id: rideData.id,
+        driver_id: authData.driverId!,
+        actual_dropoff_coords: actualDropoffCoords,
+      }
+    );
+
+    if (error) {
+      throw new Error(error);
+    } else {
+      setAvailabilityStatus('payment_in_progress' as AvailabilityStatus);
+      webSocketService.sendLocationUpdateManual(location);
+      setRideStatus('payment_in_progress');
+    }
   };
 
   const handleCancel = async () => {
@@ -200,7 +279,8 @@ export default function RideDetails() {
           onPress: async () => {
             try {
               setIsCancelling(true);
-              setAvailabilityStatus('available');
+              setAvailabilityStatus('available' as AvailabilityStatus);
+
               const { error } = await cancelByDriverApi(
                 authData.session.access_token,
                 { ride_id: rideData.id, driver_id: authData.driverId! }
@@ -255,6 +335,7 @@ export default function RideDetails() {
     const { data, error } = await getRideDriverApi(
       authData.session.access_token
     );
+
     if (!error && data) {
       setRideData(data);
       setRideStatus(data.status as RideStatus);

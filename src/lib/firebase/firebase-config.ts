@@ -1,4 +1,4 @@
-import Env from '@env';
+import { PACKAGE } from '@/constants';
 
 import googleServicesJson from '../../../google-services.json';
 
@@ -24,7 +24,6 @@ type GoogleServices = {
 };
 
 const googleServices = googleServicesJson as GoogleServices;
-const PACKAGE = Env.PACKAGE;
 
 const matchingClient = googleServices.client.find(
   (client) => client.client_info.android_client_info.package_name === PACKAGE
